@@ -1,0 +1,136 @@
+import { z } from "zod";
+
+// ==================== Auth Schemas ====================
+
+export const requestOtpSchema = z.object({
+  phone: z
+    .string()
+    .regex(/^(\+66|0)\d{8,9}$/, "Invalid Thai phone number format"),
+});
+
+export const verifyOtpSchema = z.object({
+  phone: z
+    .string()
+    .regex(/^(\+66|0)\d{8,9}$/, "Invalid Thai phone number format"),
+  code: z.string().length(6, "OTP must be 6 digits"),
+  role: z.enum(["CUSTOMER", "DRIVER"]).optional().default("CUSTOMER"),
+});
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required"),
+});
+
+// ==================== User Schemas ====================
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  email: z.string().email().optional(),
+  avatarUrl: z.string().url().optional(),
+  locale: z.enum(["th", "en"]).optional(),
+});
+
+// ==================== Ride Request Schemas ====================
+
+export const createRideRequestSchema = z.object({
+  vehicleType: z.enum(["TAXI", "MOTORCYCLE", "TUKTUK"]),
+  pickupLatitude: z.number().min(-90).max(90),
+  pickupLongitude: z.number().min(-180).max(180),
+  pickupAddress: z.string().min(1).max(500),
+  dropoffLatitude: z.number().min(-90).max(90),
+  dropoffLongitude: z.number().min(-180).max(180),
+  dropoffAddress: z.string().min(1).max(500),
+  fareOffer: z.number().positive("Fare must be positive"),
+  fareMin: z.number().positive("Minimum fare must be positive"),
+  fareMax: z.number().positive("Maximum fare must be positive"),
+  paymentMethod: z.enum(["CASH", "CARD", "WALLET"]).optional().default("CASH"),
+});
+
+export const fareEstimateSchema = z.object({
+  vehicleType: z.enum(["TAXI", "MOTORCYCLE", "TUKTUK"]),
+  pickupLatitude: z.number().min(-90).max(90),
+  pickupLongitude: z.number().min(-180).max(180),
+  dropoffLatitude: z.number().min(-90).max(90),
+  dropoffLongitude: z.number().min(-180).max(180),
+});
+
+// ==================== Ride Offer Schemas ====================
+
+export const createRideOfferSchema = z.object({
+  rideRequestId: z.string().min(1),
+  fareAmount: z.number().positive("Fare amount must be positive"),
+  estimatedPickupMinutes: z.number().int().positive().optional(),
+  message: z.string().max(200).optional(),
+});
+
+export const respondToOfferSchema = z.object({
+  action: z.enum(["ACCEPT", "REJECT"]),
+});
+
+// ==================== Trip Schemas ====================
+
+export const updateTripStatusSchema = z.object({
+  status: z.enum([
+    "DRIVER_EN_ROUTE",
+    "DRIVER_ARRIVED",
+    "PICKUP_CONFIRMED",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "CANCELLED",
+  ]),
+  cancelReason: z.string().max(500).optional(),
+});
+
+export const updateLocationSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  speed: z.number().min(0).optional(),
+  heading: z.number().min(0).max(360).optional(),
+});
+
+// ==================== Rating Schemas ====================
+
+export const createRatingSchema = z.object({
+  tripId: z.string().min(1),
+  score: z.number().int().min(1).max(5),
+  tags: z.array(z.string()).optional().default([]),
+  comment: z.string().max(500).optional(),
+});
+
+// ==================== Admin Schemas ====================
+
+export const adminLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+export const updateUserStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]),
+});
+
+export const verifyDriverSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  reason: z.string().optional(),
+});
+
+// ==================== Driver Profile Schemas ====================
+
+export const updateDriverProfileSchema = z.object({
+  licenseNumber: z.string().optional(),
+  isOnline: z.boolean().optional(),
+});
+
+export const registerVehicleSchema = z.object({
+  type: z.enum(["TAXI", "MOTORCYCLE", "TUKTUK"]),
+  make: z.string().min(1).max(100),
+  model: z.string().min(1).max(100),
+  color: z.string().min(1).max(50),
+  year: z.number().int().min(1990).max(2030).optional(),
+  plateNumber: z.string().min(1).max(20),
+});
+
+// ==================== Pagination ====================
+
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});

@@ -1,0 +1,25 @@
+{
+  "name": "fairgo-react",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FairGo — Fair-pricing ride-hailing platform (React monorepo)",
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:admin": "pnpm --filter @fairgo/admin dev",
+    "dev:customer": "pnpm --filter @fairgo/customer dev",
+    "dev:driver": "pnpm --filter @fairgo/driver dev",
+    "dev:api": "pnpm --filter @fairgo/api dev",
+    "dev": "pnpm run --parallel dev:admin dev:customer dev:driver dev:api",
+    "build:admin": "pnpm --filter @fairgo/admin build",
+    "build:customer": "pnpm --filter @fairgo/customer build",
+    "build:driver": "pnpm --filter @fairgo/driver build",
+    "build:api": "pnpm --filter @fairgo/api build",
+    "build": "pnpm run --sequential build:api build:admin build:customer build:driver",
+    "type-check": "pnpm -r type-check",
+    "lint": "pnpm -r lint"
+  }
+}

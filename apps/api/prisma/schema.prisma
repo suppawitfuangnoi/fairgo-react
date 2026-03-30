@@ -1,0 +1,602 @@
+// FAIRGO - Fair-pricing ride-hailing platform for Thailand
+// Prisma Schema - Phase 1
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  CUSTOMER
+  DRIVER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum VehicleType {
+  TAXI
+  MOTORCYCLE
+  TUKTUK
+}
+
+enum DriverVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DocumentType {
+  DRIVERS_LICENSE
+  NATIONAL_ID
+  VEHICLE_REGISTRATION
+  INSURANCE
+  PROFILE_PHOTO
+  VEHICLE_PHOTO
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RideRequestStatus {
+  PENDING
+  MATCHING
+  MATCHED
+  CANCELLED
+  EXPIRED
+}
+
+enum RideOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  WITHDRAWN
+}
+
+enum TripStatus {
+  DRIVER_ASSIGNED
+  DRIVER_EN_ROUTE
+  DRIVER_ARRIVED
+  PICKUP_CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum WalletTransactionType {
+  TOP_UP
+  RIDE_PAYMENT
+  RIDE_EARNING
+  WITHDRAWAL
+  REFUND
+  PROMOTION
+  COMMISSION
+}
+
+enum NotificationType {
+  RIDE_REQUEST
+  RIDE_OFFER
+  RIDE_ACCEPTED
+  TRIP_UPDATE
+  PAYMENT
+  PROMOTION
+  SYSTEM
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id        String     @id @default(cuid())
+  phone     String     @unique
+  email     String?    @unique
+  name      String?
+  role      UserRole
+  status    UserStatus @default(ACTIVE)
+  avatarUrl String?
+  locale    String     @default("th")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  customerProfile CustomerProfile?
+  driverProfile   DriverProfile?
+  adminProfile    AdminProfile?
+  refreshTokens   RefreshToken[]
+  deviceTokens    DeviceToken[]
+  notifications   Notification[]
+  ratingsGiven    Rating[]         @relation("RatingFrom")
+  ratingsReceived Rating[]         @relation("RatingTo")
+  supportTickets  SupportTicket[]
+  auditLogs       AuditLog[]
+
+  @@index([phone])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model CustomerProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  savedPlaces   Json?    // { home: {lat, lng, address}, work: {lat, lng, address}, ... }
+  defaultPaymentMethod PaymentMethod @default(CASH)
+  totalTrips    Int      @default(0)
+  averageRating Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rideRequests RideRequest[]
+  wallet       Wallet?
+
+  @@map("customer_profiles")
+}
+
+model DriverProfile {
+  id                  String                   @id @default(cuid())
+  userId              String                   @unique
+  licenseNumber       String?
+  isOnline            Boolean                  @default(false)
+  isVerified          Boolean                  @default(false)
+  verificationStatus  DriverVerificationStatus @default(PENDING)
+  currentLatitude     Float?
+  currentLongitude    Float?
+  lastLocationUpdate  DateTime?
+  totalTrips          Int                      @default(0)
+  averageRating       Float                    @default(0)
+  acceptanceRate      Float                    @default(0)
+  commissionRate      Float                    @default(0.15) // 15% default
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicles   Vehicle[]
+  documents  DriverDocument[]
+  rideOffers RideOffer[]
+  trips      Trip[]
+  wallet     Wallet?
+
+  @@index([isOnline])
+  @@index([verificationStatus])
+  @@index([currentLatitude, currentLongitude])
+  @@map("driver_profiles")
+}
+
+model AdminProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  department  String?
+  permissions Json?    // { users: true, drivers: true, trips: true, payments: true, ... }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_profiles")
+}
+
+model Vehicle {
+  id              String      @id @default(cuid())
+  driverProfileId String
+  type            VehicleType
+  make            String      // e.g. Toyota
+  model           String      // e.g. Altis
+  color           String
+  year            Int?
+  plateNumber     String
+  photoUrl        String?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  driverProfile DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  trips         Trip[]
+
+  @@unique([plateNumber])
+  @@index([driverProfileId])
+  @@index([type])
+  @@map("vehicles")
+}
+
+model DriverDocument {
+  id              String         @id @default(cuid())
+  driverProfileId String
+  type            DocumentType
+  fileUrl         String
+  status          DocumentStatus @default(PENDING)
+  rejectionReason String?
+  expiresAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  driverProfile DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+
+  @@index([driverProfileId])
+  @@index([type])
+  @@map("driver_documents")
+}
+
+model RideRequest {
+  id                String            @id @default(cuid())
+  customerProfileId String
+  vehicleType       VehicleType
+  pickupLatitude    Float
+  pickupLongitude   Float
+  pickupAddress     String
+  dropoffLatitude   Float
+  dropoffLongitude  Float
+  dropoffAddress    String
+  fareMin           Float             // Customer's minimum acceptable fare
+  fareMax           Float             // Customer's maximum acceptable fare
+  fareOffer         Float             // Customer's proposed fare
+  recommendedFare   Float?            // System-calculated recommended fare
+  estimatedDistance Float?            // in kilometers
+  estimatedDuration Int?              // in minutes
+  paymentMethod     PaymentMethod     @default(CASH)
+  status            RideRequestStatus @default(PENDING)
+  expiresAt         DateTime?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  offers          RideOffer[]
+  trip            Trip?
+
+  @@index([customerProfileId])
+  @@index([status])
+  @@index([vehicleType])
+  @@index([pickupLatitude, pickupLongitude])
+  @@index([createdAt])
+  @@map("ride_requests")
+}
+
+model RideOffer {
+  id              String          @id @default(cuid())
+  rideRequestId   String
+  driverProfileId String
+  fareAmount      Float           // Driver's offered fare
+  estimatedPickupMinutes Int?     // ETA to pickup
+  message         String?         // Optional message from driver
+  status          RideOfferStatus @default(PENDING)
+  respondedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  rideRequest   RideRequest   @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+  driverProfile DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([rideRequestId, driverProfileId])
+  @@index([rideRequestId])
+  @@index([driverProfileId])
+  @@index([status])
+  @@map("ride_offers")
+}
+
+model Trip {
+  id              String     @id @default(cuid())
+  rideRequestId   String     @unique
+  driverProfileId String
+  vehicleId       String?
+  lockedFare      Float      // Final agreed fare
+  status          TripStatus @default(DRIVER_ASSIGNED)
+  pickupLatitude  Float
+  pickupLongitude Float
+  pickupAddress   String
+  dropoffLatitude  Float
+  dropoffLongitude Float
+  dropoffAddress   String
+  actualDistance   Float?     // in km
+  actualDuration  Int?       // in minutes
+  startedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  cancelledBy     String?    // userId
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  rideRequest   RideRequest   @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+  driverProfile DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle?      @relation(fields: [vehicleId], references: [id])
+  tripLocations TripLocation[]
+  payment       Payment?
+  ratings       Rating[]
+
+  @@index([driverProfileId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("trips")
+}
+
+model TripLocation {
+  id        String   @id @default(cuid())
+  tripId    String
+  latitude  Float
+  longitude Float
+  speed     Float?
+  heading   Float?
+  timestamp DateTime @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([timestamp])
+  @@map("trip_locations")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  tripId        String        @unique
+  amount        Float
+  commission    Float         // Platform commission
+  driverEarning Float         // amount - commission
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionRef String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+model Wallet {
+  id                String   @id @default(cuid())
+  customerProfileId String?  @unique
+  driverProfileId   String?  @unique
+  balance           Float    @default(0)
+  currency          String   @default("THB")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  customerProfile CustomerProfile? @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  driverProfile   DriverProfile?   @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  transactions    WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id          String                @id @default(cuid())
+  walletId    String
+  type        WalletTransactionType
+  amount      Float
+  balanceBefore Float
+  balanceAfter  Float
+  description String?
+  referenceId String?               // tripId, etc.
+  createdAt   DateTime              @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("wallet_transactions")
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  tripId    String
+  fromUserId String
+  toUserId   String
+  score     Int      // 1-5
+  tags      String[] // e.g. ["Fair price", "Friendly driver", "Clean car"]
+  comment   String?
+  createdAt DateTime @default(now())
+
+  trip     Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  fromUser User @relation("RatingFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("RatingTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, fromUserId])
+  @@index([toUserId])
+  @@index([createdAt])
+  @@map("ratings")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // ios, android, web
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
+}
+
+model PricingRule {
+  id             String      @id @default(cuid())
+  vehicleType    VehicleType
+  baseFare       Float
+  perKmRate      Float
+  perMinuteRate  Float
+  minimumFare    Float
+  surgeMultiplier Float     @default(1.0)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([vehicleType])
+  @@map("pricing_rules")
+}
+
+model Coupon {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  description     String?
+  discountType    String   // PERCENTAGE, FIXED
+  discountValue   Float
+  maxDiscount     Float?
+  minFare         Float?
+  maxRedemptions  Int?
+  currentRedemptions Int   @default(0)
+  validFrom       DateTime
+  validUntil      DateTime
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  redemptions CouponRedemption[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  tripId    String?
+  discount  Float
+  createdAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userId, tripId])
+  @@index([userId])
+  @@map("coupon_redemptions")
+}
+
+model SupportTicket {
+  id          String                @id @default(cuid())
+  userId      String
+  tripId      String?
+  subject     String
+  description String
+  status      SupportTicketStatus   @default(OPEN)
+  priority    SupportTicketPriority @default(MEDIUM)
+  assignedTo  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("support_tickets")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldData   Json?
+  newData   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([expiresAt])
+  @@map("otp_codes")
+}
