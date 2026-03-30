@@ -1,9 +1,219 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '@/lib/api';
+
+interface Trip {
+  id: string;
+  route: string;
+  fare: number;
+  date: string;
+  driverName: string;
+}
+
 export default function HomePage() {
+  const navigate = useNavigate();
+  const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrips = async () => {
+      try {
+        const data = await apiFetch('/trips?limit=5');
+        setRecentTrips(data.trips || []);
+      } catch (err) {
+        console.error('Failed to fetch trips:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrips();
+  }, []);
+
   return (
-    <div className="w-full max-w-md mx-auto h-screen flex items-center justify-center bg-bg-light">
-      <div className="text-center px-4">
-        <h1 className="text-3xl font-bold text-text-primary">Home</h1>
-        <p className="text-text-secondary mt-2">Main map and ride booking interface</p>
+    <div className="w-full max-w-md mx-auto h-screen bg-background-light dark:bg-background-dark overflow-hidden relative flex flex-col">
+      {/* Map Background */}
+      <div className="absolute inset-0 z-0 w-full h-full bg-[#eef4f6] dark:bg-[#1f2937]">
+        <div className="relative w-full h-full opacity-60">
+          <div className="absolute top-[-10%] left-[30%] w-[40px] h-[120%] bg-white dark:bg-gray-700 transform rotate-12 border-l-4 border-r-4 border-gray-100 dark:border-gray-600"></div>
+          <div className="absolute top-[40%] left-[-10%] w-[120%] h-[35px] bg-white dark:bg-gray-700 transform -rotate-6 border-t-4 border-b-4 border-gray-100 dark:border-gray-600"></div>
+          <div className="absolute top-[10%] right-[10%] w-[150px] h-[200px] bg-primary/5 rounded-xl"></div>
+          <div className="absolute bottom-[30%] right-[20%] w-[80px] h-[80px] bg-gray-100 dark:bg-gray-700 rounded-md"></div>
+          <div className="absolute top-[20%] left-[10%] w-[100px] h-[120px] bg-gray-100 dark:bg-gray-700 rounded-md"></div>
+        </div>
+
+        {/* User Current Location Pin */}
+        <div className="absolute top-[48%] left-[48%] z-20">
+          <div className="relative">
+            <div className="w-6 h-6 bg-primary rounded-full border-4 border-white dark:border-gray-800 shadow-lg"></div>
+            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded-full whitespace-nowrap shadow-lg opacity-80">
+              You're here
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* UI Overlay Layer */}
+      <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
+        {/* Top Area: Header */}
+        <div className="pt-14 px-5 pointer-events-auto">
+          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-full p-2 flex items-center gap-3 pr-4 ring-1 ring-black/5">
+            <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <span className="material-icons-round text-gray-800 dark:text-white">
+                menu
+              </span>
+            </button>
+            <div className="flex-1">
+              <button
+                onClick={() => navigate('/ride-request')}
+                className="flex items-center gap-2 w-full text-left"
+              >
+                <div className="w-2 h-2 rounded-full bg-primary"></div>
+                <span className="text-gray-400 dark:text-gray-500 font-medium text-sm">
+                  ไปไหนดี?
+                </span>
+              </button>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm">
+              <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                <span className="material-icons-round text-primary">person</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Sheet Area */}
+        <div className="pointer-events-auto w-full bg-white dark:bg-gray-900 rounded-t-3xl shadow-lg pb-8 pt-2">
+          {/* Drag Handle */}
+          <div className="w-full flex justify-center pt-3 pb-1">
+            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+          </div>
+
+          <div className="px-6 py-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+              วางแผนการเดินทาง
+            </h2>
+
+            {/* Inputs Container */}
+            <div className="relative flex flex-col gap-4 mb-6">
+              {/* Connecting Line */}
+              <div className="absolute left-[22px] top-[40px] bottom-[40px] w-0.5 border-l-2 border-dashed border-gray-300 dark:border-gray-700 z-0"></div>
+
+              {/* Pickup Input */}
+              <div className="relative z-10 group">
+                <div className="bg-background-light dark:bg-background-dark rounded-xl p-4 flex items-center gap-4 border border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+                  <div className="w-5 h-5 rounded-full border-[3px] border-gray-800 dark:border-white shrink-0 bg-transparent"></div>
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+                      Pick-up
+                    </label>
+                    <input
+                      type="text"
+                      value="ตำแหน่งปัจจุบัน"
+                      readOnly
+                      className="w-full bg-transparent border-none p-0 text-sm font-semibold text-gray-800 dark:text-gray-200 focus:ring-0"
+                    />
+                  </div>
+                  <span className="material-icons-round text-gray-400 text-lg">
+                    my_location
+                  </span>
+                </div>
+              </div>
+
+              {/* Destination Input */}
+              <div className="relative z-10 group">
+                <div className="bg-background-light dark:bg-background-dark rounded-xl p-4 flex items-center gap-4 border border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all shadow-sm cursor-text">
+                  <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+                    <span className="material-icons-round text-primary text-2xl">
+                      location_on
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">
+                      ไปไหนดี?
+                    </label>
+                    <button
+                      onClick={() => navigate('/ride-request')}
+                      className="w-full text-left bg-transparent border-none p-0 text-base font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white focus:ring-0 transition-colors"
+                    >
+                      เลือกปลายทาง
+                    </button>
+                  </div>
+                  <button className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500">
+                    <span className="material-icons-round text-sm">add</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="mb-6">
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                ระเบียบการเลือกรถ
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <button className="py-3 px-2 bg-background-light dark:bg-background-dark hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/30 text-center">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-1">
+                    <span className="material-icons-round text-sm">
+                      local_taxi
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-900 dark:text-white">
+                    แท็กซี่
+                  </div>
+                </button>
+                <button className="py-3 px-2 bg-background-light dark:bg-background-dark hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/30 text-center">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-1">
+                    <span className="material-icons-round text-sm">
+                      two_wheeler
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-900 dark:text-white">
+                    มอเตอร์
+                  </div>
+                </button>
+                <button className="py-3 px-2 bg-background-light dark:bg-background-dark hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/30 text-center">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-1">
+                    <span className="material-icons-round text-sm">
+                      directions_car
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-900 dark:text-white">
+                    ตุ๊กตุ๊ก
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Recent Trips */}
+            {!loading && recentTrips.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  การเดินทางล่าสุด
+                </h3>
+                <div className="space-y-2">
+                  {recentTrips.map((trip) => (
+                    <button
+                      key={trip.id}
+                      onClick={() => navigate('/ride-request')}
+                      className="w-full p-3 bg-background-light dark:bg-background-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                    >
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {trip.route}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        ฿{trip.fare} • {trip.driverName}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom safe area spacer */}
+          <div className="h-6 w-full"></div>
+        </div>
       </div>
     </div>
   );
