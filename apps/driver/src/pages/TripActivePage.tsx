@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { socketClient, socketEvents } from '@fairgo/api-client';
+import { toast } from '@/lib/toast';
 
 type TripStatus =
   | 'DRIVER_ASSIGNED'
@@ -63,24 +65,44 @@ export default function TripActivePage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchTrip = async () => {
       try {
-        const response = await apiFetch<Trip>('/trips/active');
-        setTrip(response);
-      } catch (err) {
+        const response = await apiFetch<Trip>('/api/v1/trips/active');
+        if (response) setTrip(response);
+        if (response?.status === 'COMPLETED') {
+          navigate(`/trip-summary/${response.id}`, { replace: true });
+        }
+      } catch {
         setError('Failed to load trip');
       }
     };
 
     fetchTrip();
-    const interval = setInterval(fetchTrip, 5000);
-    setPollInterval(interval);
 
-    return () => clearInterval(interval);
-  }, []);
+    // Socket: real-time status updates from customer/server
+    const socket = socketClient.connect();
+    const onTripStatus = (update: { id: string; status: TripStatus }) => {
+      setTrip(prev => {
+        if (!prev) return prev;
+        return { ...prev, status: update.status };
+      });
+      if (update.status === 'COMPLETED') {
+        navigate(`/trip-summary/${update.id}`, { replace: true });
+      }
+    };
+    socket.on(socketEvents.ON_TRIP_STATUS, onTripStatus);
+
+    // Fallback poll every 12s
+    pollRef.current = setInterval(fetchTrip, 12000);
+
+    return () => {
+      socket.off(socketEvents.ON_TRIP_STATUS, onTripStatus);
+      clearInterval(pollRef.current!);
+    };
+  }, [navigate]);
 
   if (!trip) {
     return (
@@ -106,19 +128,21 @@ export default function TripActivePage() {
 
     try {
       const nextStatus = NEXT_STATUS[trip.status];
-      await apiFetch(`/trips/${trip.id}/status`, {
+      await apiFetch(`/api/v1/trips/${trip.id}/status`, {
         method: 'PATCH',
-        body: { status: nextStatus },
+        body: JSON.stringify({ status: nextStatus }),
       });
 
       setTrip({ ...trip, status: nextStatus });
 
       if (nextStatus === 'COMPLETED') {
+        toast.success('การเดินทางเสร็จสิ้น!');
         setTimeout(() => {
           navigate(`/trip-summary/${trip.id}`, { replace: true });
         }, 1000);
       }
     } catch (err) {
+      toast.error('ไม่สามารถอัปเดตสถานะได้');
       setError(err instanceof Error ? err.message : 'Failed to update trip status');
     } finally {
       setLoading(false);

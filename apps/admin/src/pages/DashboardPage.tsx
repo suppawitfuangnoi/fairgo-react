@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { socketClient } from '@/lib/socket';
+import { toast } from '@/lib/toast';
 
 interface DashboardData {
   totalUsers: number;
@@ -33,10 +34,11 @@ export default function DashboardPage() {
     const socket = socketClient.connect();
     
     const handleTripUpdate = (data: any) => {
-      console.log('[Real-time] Trip updated:', data);
-      // Silently refetch data on update without triggering full loading state
-      apiFetch<DashboardData>('/admin/dashboard').then(setStats).catch(console.error);
-      apiFetch<{ data: Trip[] }>('/admin/trips?limit=10').then(res => setTrips(res.data)).catch(console.error);
+      // Silently refetch data on update
+      apiFetch<DashboardData>('/api/v1/admin/dashboard').then(setStats).catch(console.error);
+      apiFetch<{ data: Trip[] }>('/api/v1/admin/trips?limit=10').then(res => setTrips(res.data || [])).catch(console.error);
+      if (data?.status === 'COMPLETED') toast.success('Trip completed');
+      else if (data?.type === 'new_request') toast.info('New ride request incoming');
     };
 
     socket.on('trip:status', handleTripUpdate);
@@ -55,8 +57,8 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       const [dashboardRes, tripsRes] = await Promise.all([
-        apiFetch<DashboardData>('/admin/dashboard'),
-        apiFetch<{ data: Trip[] }>('/admin/trips?limit=10'),
+        apiFetch<DashboardData>('/api/v1/admin/dashboard'),
+        apiFetch<{ data: Trip[] }>('/api/v1/admin/trips?limit=10'),
       ]);
       setStats(dashboardRes);
       setTrips(tripsRes.data || []);

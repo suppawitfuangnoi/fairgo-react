@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { apiFetch } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
+import { socketClient, socketEvents } from '@fairgo/api-client';
+import { toast } from '@/lib/toast';
 
 interface RideRequest {
   id: string;
@@ -27,63 +29,83 @@ export default function HomePage() {
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [todayTrips, setTodayTrips] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const checkActiveTrip = async () => {
+    // Check if there's already an active trip on mount
+    (async () => {
       try {
-        const trip = await apiFetch<any>('/trips/active');
-        if (trip?.id) {
-          navigate('/trip-active', { replace: true });
-        }
-      } catch (err) {
-        // No active trip
-      }
-    };
-
-    checkActiveTrip();
+        const trip = await apiFetch<any>('/api/v1/trips/active');
+        if (trip?.id) navigate('/trip-active', { replace: true });
+      } catch { /* no active trip */ }
+    })();
   }, [navigate]);
 
   useEffect(() => {
+    if (!isOnline) {
+      setRides([]);
+      clearInterval(pollRef.current!);
+      return;
+    }
+
     const fetchRides = async () => {
-      if (!isOnline) return;
-
       try {
-        const response = await apiFetch<{ rides: RideRequest[]; summary: any }>(
-          '/rides/nearby?latitude=13.7563&longitude=100.5018&radius=10'
+        const response = await apiFetch<{ data: { rides: RideRequest[]; totalTrips: number; totalEarnings: number } }>(
+          '/api/v1/rides/nearby?latitude=13.7563&longitude=100.5018&radius=10'
         );
-        setRides(response.rides || []);
-
-        const summary = await apiFetch<any>('/trips?date=today&summary=true');
-        setTodayTrips(summary.count || 0);
-        setTodayEarnings(summary.earnings || 0);
-      } catch (err) {
-        // Handle error silently
-      }
+        if (response.data) {
+          setRides(response.data.rides || []);
+          setTodayTrips(response.data.totalTrips || 0);
+          setTodayEarnings(response.data.totalEarnings || 0);
+        }
+      } catch { /* ignore */ }
     };
 
-    if (isOnline) {
-      fetchRides();
-      const interval = setInterval(fetchRides, 8000);
-      setPollInterval(interval);
-      return () => clearInterval(interval);
-    }
-  }, [isOnline]);
+    fetchRides();
+    // Socket: real-time new ride requests
+    const socket = socketClient.connect();
+    const onNewRide = (ride: RideRequest) => {
+      setRides(prev => {
+        if (prev.find(r => r.id === ride.id)) return prev;
+        toast.info(`คำขอใหม่จาก ${ride.passengerName} — ฿${ride.fareOffer}`);
+        return [ride, ...prev];
+      });
+    };
+    const onOfferAccepted = (data: { tripId: string }) => {
+      toast.success('ข้อเสนอได้รับการยอมรับ!');
+      navigate('/trip-active', { replace: true });
+    };
+    socket.on(socketEvents.ON_NEW_RIDE_REQUEST, onNewRide);
+    socket.on(socketEvents.ON_OFFER_ACCEPTED, onOfferAccepted);
+
+    // Fallback poll every 12s
+    pollRef.current = setInterval(fetchRides, 12000);
+
+    return () => {
+      socket.off(socketEvents.ON_NEW_RIDE_REQUEST, onNewRide);
+      socket.off(socketEvents.ON_OFFER_ACCEPTED, onOfferAccepted);
+      clearInterval(pollRef.current!);
+    };
+  }, [isOnline, navigate]);
 
   const toggleOnline = async () => {
     setLoading(true);
     try {
-      await apiFetch('/users/me/driver-profile', {
+      await apiFetch('/api/v1/users/me/driver-profile', {
         method: 'PATCH',
-        body: { isOnline: !isOnline },
+        body: JSON.stringify({ isOnline: !isOnline }),
       });
-      setIsOnline(!isOnline);
-      updateUser({ isOnline: !isOnline });
-      if (!isOnline) {
+      const next = !isOnline;
+      setIsOnline(next);
+      updateUser({ isOnline: next });
+      if (!next) {
         setRides([]);
+        toast.info('คุณออฟไลน์แล้ว');
+      } else {
+        toast.success('คุณออนไลน์แล้ว!');
       }
-    } catch (err) {
-      console.error('Failed to toggle online status');
+    } catch {
+      toast.error('ไม่สามารถเปลี่ยนสถานะได้');
     } finally {
       setLoading(false);
     }

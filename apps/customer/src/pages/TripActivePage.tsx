@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { socketClient, socketEvents } from '@fairgo/api-client';
+import { toast } from '@/lib/toast';
 
 interface ActiveTrip {
   id: string;
@@ -20,9 +22,10 @@ export default function TripActivePage() {
   const pollIntervalRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
+    // Initial fetch
     const fetchTrip = async () => {
       try {
-        const response = await apiFetch('/trips/active');
+        const response = await apiFetch<ActiveTrip>('/api/v1/trips/active');
         if (response.status === 'COMPLETED') {
           navigate(`/trip-summary/${response.id}`, { replace: true });
         } else {
@@ -34,11 +37,35 @@ export default function TripActivePage() {
         setLoading(false);
       }
     };
-
     fetchTrip();
-    pollIntervalRef.current = setInterval(fetchTrip, 5000);
+
+    // Socket: real-time trip status updates
+    const socket = socketClient.connect();
+
+    const onTripStatus = (update: { id: string; status: string; estimatedArrival?: number }) => {
+      setTrip(prev => {
+        if (!prev) return prev;
+        const updated = { ...prev, status: update.status as ActiveTrip['status'], estimatedArrival: update.estimatedArrival ?? prev.estimatedArrival };
+        if (update.status === 'COMPLETED') {
+          navigate(`/trip-summary/${prev.id}`, { replace: true });
+        }
+        if (update.status === 'DRIVER_ARRIVED') {
+          toast.success('คนขับมาถึงแล้ว!');
+        }
+        if (update.status === 'IN_PROGRESS') {
+          toast.info('เริ่มการเดินทางแล้ว');
+        }
+        return updated;
+      });
+    };
+
+    socket.on(socketEvents.ON_TRIP_STATUS, onTripStatus);
+
+    // Fallback poll every 10s
+    pollIntervalRef.current = setInterval(fetchTrip, 10000);
 
     return () => {
+      socket.off(socketEvents.ON_TRIP_STATUS, onTripStatus);
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, [navigate]);
@@ -46,13 +73,13 @@ export default function TripActivePage() {
   const handleCancelTrip = async () => {
     if (!trip) return;
     try {
-      await apiFetch(`/trips/${trip.id}/status`, {
+      await apiFetch(`/api/v1/trips/${trip.id}/status`, {
         method: 'PATCH',
-        body: { status: 'CANCELLED' },
+        body: JSON.stringify({ status: 'CANCELLED' }),
       });
       navigate('/home', { replace: true });
     } catch (err) {
-      console.error('Failed to cancel trip:', err);
+      toast.error('ยกเลิกไม่สำเร็จ');
     }
   };
 
