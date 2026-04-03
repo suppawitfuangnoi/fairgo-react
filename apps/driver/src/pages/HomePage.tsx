@@ -1,10 +1,280 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/store/auth.store';
+import { apiFetch } from '@/lib/api';
+import BottomNav from '@/components/BottomNav';
+
+interface RideRequest {
+  id: string;
+  passengerName: string;
+  passengerRating: number;
+  passengerTrips: number;
+  pickupAddress: string;
+  dropoffAddress: string;
+  distance: string;
+  duration: string;
+  fareOffer: number;
+  vehicleType: string;
+}
+
 export default function HomePage() {
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const updateUser = useAuthStore((state) => state.updateUser);
+
+  const [isOnline, setIsOnline] = useState(user?.isOnline || false);
+  const [rides, setRides] = useState<RideRequest[]>([]);
+  const [todayEarnings, setTodayEarnings] = useState(0);
+  const [todayTrips, setTodayTrips] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const checkActiveTrip = async () => {
+      try {
+        const trip = await apiFetch<any>('/trips/active');
+        if (trip?.id) {
+          navigate('/trip-active', { replace: true });
+        }
+      } catch (err) {
+        // No active trip
+      }
+    };
+
+    checkActiveTrip();
+  }, [navigate]);
+
+  useEffect(() => {
+    const fetchRides = async () => {
+      if (!isOnline) return;
+
+      try {
+        const response = await apiFetch<{ rides: RideRequest[]; summary: any }>(
+          '/rides/nearby?latitude=13.7563&longitude=100.5018&radius=10'
+        );
+        setRides(response.rides || []);
+
+        const summary = await apiFetch<any>('/trips?date=today&summary=true');
+        setTodayTrips(summary.count || 0);
+        setTodayEarnings(summary.earnings || 0);
+      } catch (err) {
+        // Handle error silently
+      }
+    };
+
+    if (isOnline) {
+      fetchRides();
+      const interval = setInterval(fetchRides, 8000);
+      setPollInterval(interval);
+      return () => clearInterval(interval);
+    }
+  }, [isOnline]);
+
+  const toggleOnline = async () => {
+    setLoading(true);
+    try {
+      await apiFetch('/users/me/driver-profile', {
+        method: 'PATCH',
+        body: { isOnline: !isOnline },
+      });
+      setIsOnline(!isOnline);
+      updateUser({ isOnline: !isOnline });
+      if (!isOnline) {
+        setRides([]);
+      }
+    } catch (err) {
+      console.error('Failed to toggle online status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOfferSubmit = (rideId: string) => {
+    const ride = rides.find((r) => r.id === rideId);
+    navigate(`/submit-offer/${rideId}`, { state: { ride } });
+  };
+
+  const handleSkipRide = (rideId: string) => {
+    setRides(rides.filter((r) => r.id !== rideId));
+  };
+
   return (
-    <div className="w-full max-w-md mx-auto h-screen flex items-center justify-center bg-bg-light">
-      <div className="text-center px-4">
-        <h1 className="text-3xl font-bold text-text-primary">Jobs</h1>
-        <p className="text-text-secondary mt-2">Available ride offers with online status toggle</p>
-      </div>
+    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex flex-col pb-24">
+      <header className="sticky top-0 z-30 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-6 pt-12 pb-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Job Requests</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+            {isOnline ? 'Finding nearby rides...' : 'You are offline'}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="relative inline-flex items-center cursor-pointer bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700">
+            <input
+              type="checkbox"
+              checked={isOnline}
+              onChange={toggleOnline}
+              disabled={loading}
+              className="sr-only peer"
+            />
+            <div className="w-5 h-5 rounded-full bg-slate-300 peer-checked:bg-primary transition-colors"></div>
+            <span className="ml-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
+          </label>
+
+          <button className="relative w-10 h-10 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm overflow-hidden bg-slate-200 dark:bg-slate-700">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 w-full h-full flex items-center justify-center">
+                person
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {!isOnline ? (
+        <main className="flex-1 px-4 pt-12 flex flex-col items-center justify-center text-center">
+          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500">
+              cloud_off
+            </span>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">คุณออฟไลน์อยู่</h2>
+          <p className="text-slate-500 dark:text-slate-400 mb-8">เปิดออนไลน์เพื่อรับงาน</p>
+          <button
+            onClick={toggleOnline}
+            className="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-xl transition flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined">power_settings_new</span>
+            เปิดออนไลน์
+          </button>
+
+          <div className="mt-12 w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Today's Earnings</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Trips</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{todayTrips}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Earnings</p>
+                <p className="text-2xl font-bold text-primary">฿{todayEarnings.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+        </main>
+      ) : (
+        <main className="flex-1 px-4 pt-6 space-y-5 overflow-y-auto">
+          {rides.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="relative w-24 h-24 mb-6">
+                <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
+                <span className="material-symbols-outlined text-4xl text-primary absolute inset-0 flex items-center justify-center">
+                  my_location
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">ไม่มีงานใกล้เคียง</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">เปลี่ยนตำแหน่งหรอื รอสักครู่</p>
+            </div>
+          ) : (
+            rides.map((ride) => (
+              <article
+                key={ride.id}
+                className="relative bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+
+                <div className="p-5">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200">
+                        {ride.passengerName[0]}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-lg">
+                          {ride.passengerName}
+                        </h3>
+                        <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm font-medium">
+                          <span className="text-yellow-400 material-symbols-outlined text-sm mr-1">
+                            star
+                          </span>
+                          <span>{ride.passengerRating}</span>
+                          <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>
+                          <span className="text-primary font-semibold">{ride.distance}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-extrabold text-primary tracking-tight">
+                        ฿{ride.fareOffer}
+                      </div>
+                      <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">
+                        User Offer
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-slate-100 dark:bg-slate-700/50 w-full mb-5"></div>
+
+                  <div className="relative pl-2 mb-6">
+                    <div className="absolute left-[15px] top-3 bottom-8 w-0.5 bg-gradient-to-b from-primary to-primary/20"></div>
+
+                    <div className="relative flex items-start gap-4 mb-6">
+                      <div className="relative z-10 flex-none mt-1">
+                        <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_0_4px_rgba(19,200,236,0.2)]"></div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                          Pickup • {ride.duration}
+                        </p>
+                        <p className="text-base font-bold text-slate-800 dark:text-slate-100 leading-snug">
+                          {ride.pickupAddress}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="relative flex items-start gap-4">
+                      <div className="relative z-10 flex-none mt-1">
+                        <div className="w-3 h-3 rounded-none bg-slate-900 dark:bg-white rotate-45"></div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                          Dropoff • {ride.distance}
+                        </p>
+                        <p className="text-base font-bold text-slate-800 dark:text-slate-100 leading-snug">
+                          {ride.dropoffAddress}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      onClick={() => handleSkipRide(ride.id)}
+                      className="flex-1 py-3.5 px-4 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-base hover:bg-slate-200 dark:hover:bg-slate-600 transition active:scale-[0.98]"
+                    >
+                      ข้าม
+                    </button>
+                    <button
+                      onClick={() => handleOfferSubmit(ride.id)}
+                      className="flex-[2] py-3.5 px-4 rounded-lg bg-primary text-white font-bold text-base shadow-[0_4px_14px_rgba(19,200,236,0.4)] hover:bg-primary-dark hover:shadow-lg transition active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                      <span>ยื่นข้อเสนอ</span>
+                      <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))
+          )}
+        </main>
+      )}
+
+      <BottomNav />
     </div>
   );
 }

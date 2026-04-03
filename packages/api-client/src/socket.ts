@@ -3,7 +3,7 @@ import { authStore } from './auth';
 
 const SOCKET_URL = (typeof window !== 'undefined' && (window as any).__FAIRGO_SOCKET__)
   || import.meta?.env?.VITE_SOCKET_URL
-  || 'https://fairgo-api.vercel.app';
+  || 'https://fairgo-production.up.railway.app';
 
 let socket: Socket | null = null;
 

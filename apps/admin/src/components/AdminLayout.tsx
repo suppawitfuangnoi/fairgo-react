@@ -36,10 +36,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="flex min-h-screen font-sans bg-bg-light dark:bg-bg-dark text-text-primary dark:text-white">
       {/* Sidebar */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-20 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 flex flex-col ${
+        className={`fixed md:relative inset-y-0 left-0 z-20 bg-white dark:bg-bg-dark border-r border-border-light dark:border-slate-800 transition-all duration-300 flex flex-col ${
           sidebarOpen ? 'w-64' : 'w-0 md:w-64'
         }`}
       >
@@ -93,17 +93,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-x-hidden min-h-screen">
         {/* Top Header */}
-        <header className="h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
+        <header className="h-20 bg-white/80 dark:bg-bg-dark/80 backdrop-blur-md border-b border-border-light dark:border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10 transition-colors">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="md:hidden p-2 hover:bg-bg-light dark:hover:bg-slate-800 rounded-lg transition-colors"
             >
               <span className="material-symbols-outlined">menu</span>
             </button>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <h2 className="text-xl font-bold tracking-tight text-text-primary dark:text-white">
               {getPageTitle()}
             </h2>
           </div>

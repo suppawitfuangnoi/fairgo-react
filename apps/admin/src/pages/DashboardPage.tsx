@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
+import { socketClient } from '@/lib/socket';
 
 interface DashboardData {
   totalUsers: number;
@@ -27,6 +28,27 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
+
+    // Connect socket for real-time dashboard updates
+    const socket = socketClient.connect();
+    
+    const handleTripUpdate = (data: any) => {
+      console.log('[Real-time] Trip updated:', data);
+      // Silently refetch data on update without triggering full loading state
+      apiFetch<DashboardData>('/admin/dashboard').then(setStats).catch(console.error);
+      apiFetch<{ data: Trip[] }>('/admin/trips?limit=10').then(res => setTrips(res.data)).catch(console.error);
+    };
+
+    socket.on('trip:status', handleTripUpdate);
+    socket.on('trip:created', handleTripUpdate);
+    socket.on('ride:new_request', handleTripUpdate);
+
+    return () => {
+      socket.off('trip:status', handleTripUpdate);
+      socket.off('trip:created', handleTripUpdate);
+      socket.off('ride:new_request', handleTripUpdate);
+      // Wait to disconnect until App unmounts ideally, but here we can just clean listeners
+    };
   }, []);
 
   const fetchData = async () => {

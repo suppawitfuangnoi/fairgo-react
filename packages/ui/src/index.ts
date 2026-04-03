@@ -11,3 +11,6 @@ export * from './components/Badge';
 export * from './components/Avatar';
 export * from './components/BottomSheet';
 export * from './components/MapContainer';
+export * from './components/FareSlider';
+export * from './components/StatusBadge';
+export * from './components/GoogleMap';
