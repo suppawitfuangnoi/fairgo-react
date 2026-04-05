@@ -35,10 +35,10 @@ export default function TripsPage() {
     try {
       setLoading(true);
       const status = tab === 'all' ? '' : tab.toUpperCase();
-      const response = await apiFetch<{ data: Trip[] }>(
+      const response = await apiFetch<Trip[]>(
         `/admin/trips?${status ? `status=${status}` : ''}&limit=50`
       );
-      setTrips(response.data || []);
+      setTrips(response || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load trips');
     } finally {

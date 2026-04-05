@@ -38,10 +38,10 @@ export default function DriversPage() {
     try {
       setLoading(true);
       const status = tab === 'all' ? '' : tab.toUpperCase();
-      const response = await apiFetch<{ data: Driver[] }>(
+      const response = await apiFetch<Driver[]>(
         `/admin/drivers?${status ? `status=${status}` : ''}`
       );
-      setDrivers(response.data || []);
+      setDrivers(response || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load drivers');
     } finally {

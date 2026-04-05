@@ -32,8 +32,8 @@ export default function PricingPage() {
   const fetchPricing = async () => {
     try {
       setLoading(true);
-      const response = await apiFetch<{ data: PricingRule[] }>('/admin/pricing');
-      setRules(response.data || []);
+      const response = await apiFetch<PricingRule[]>('/admin/pricing');
+      setRules(response || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load pricing');
     } finally {

@@ -53,8 +53,8 @@ export default function PromosPage() {
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const res = await apiFetch<{ data: Coupon[] }>('/admin/coupons');
-      setCoupons(res.data || []);
+      const res = await apiFetch<Coupon[]>('/admin/coupons');
+      setCoupons(res || []);
     } catch {
       showToast('Failed to load coupons', 'error');
     } finally {
@@ -97,11 +97,11 @@ export default function PromosPage() {
       if (formData.minFare) payload.minFare = parseFloat(formData.minFare);
       if (formData.maxRedemptions) payload.maxRedemptions = parseInt(formData.maxRedemptions);
 
-      const res = await apiFetch<{ data: Coupon }>('/admin/coupons', {
+      const res = await apiFetch<Coupon>('/admin/coupons', {
         method: 'POST',
         body: payload,
       });
-      setCoupons((prev) => [res.data, ...prev]);
+      setCoupons((prev) => [res, ...prev]);
       setShowModal(false);
       setFormData(EMPTY_FORM);
       showToast('Coupon created successfully');

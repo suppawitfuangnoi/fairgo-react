@@ -38,10 +38,10 @@ export default function DisputesPage() {
     try {
       setLoading(true);
       const status = tab === 'all' ? '' : tab.toUpperCase();
-      const response = await apiFetch<{ data: Dispute[] }>(
+      const response = await apiFetch<Dispute[]>(
         `/admin/disputes?${status ? `status=${status}` : ''}`
       );
-      setDisputes(response.data || []);
+      setDisputes(response || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load disputes');
     } finally {

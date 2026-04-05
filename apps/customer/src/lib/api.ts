@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || 'https://fairgo-api.vercel.app/api/v1';
+const BASE = import.meta.env.VITE_API_URL || 'https://fairgo-react-production.up.railway.app/api/v1';
 
 export async function apiFetch<T>(
   path: string,
@@ -14,6 +14,6 @@ export async function apiFetch<T>(
     body: opt.body ? JSON.stringify(opt.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
   return data;
 }
