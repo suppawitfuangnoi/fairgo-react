@@ -31,6 +31,43 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+function mapTrip(o: any): ActiveTrip {
+  return {
+    id: o.id,
+    status: o.status,
+    driverName:
+      o.driverProfile?.user?.name ||
+      o.driver?.driverProfile?.user?.name ||
+      o.driver?.name ||
+      o.driverName ||
+      'คนขับ',
+    driverRating:
+      o.driverProfile?.averageRating ??
+      o.driver?.driverProfile?.averageRating ??
+      o.driverRating ??
+      4.8,
+    driverPhone:
+      o.driverProfile?.user?.phone ||
+      o.driver?.phone ||
+      o.driverPhone ||
+      '',
+    vehiclePlate:
+      o.driverProfile?.vehicles?.[0]?.plateNumber ||
+      o.driver?.driverProfile?.vehicles?.[0]?.plateNumber ||
+      o.vehiclePlate ||
+      '',
+    fare:
+      o.offer?.fareAmount ??
+      o.acceptedOffer?.fareAmount ??
+      o.fare ??
+      0,
+    estimatedArrival:
+      o.estimatedArrival ??
+      o.estimatedPickupMinutes ??
+      0,
+  };
+}
+
 // Bangkok bounding box for SVG mapping (rough)
 const BBOX = { latMin: 13.60, latMax: 13.90, lngMin: 100.35, lngMax: 100.70 };
 
@@ -61,11 +98,11 @@ export default function TripActivePage() {
   useEffect(() => {
     const fetchTrip = async () => {
       try {
-        const response = await apiFetch<ActiveTrip>('/trips/active');
+        const response = await apiFetch<any>('/trips/active');
         if (response.status === 'COMPLETED') {
           navigate(`/trip-summary/${response.id}`, { replace: true });
         } else {
-          setTrip(response);
+          setTrip(mapTrip(response));
           tripIdRef.current = response.id;
         }
       } catch (err) {
@@ -255,7 +292,7 @@ export default function TripActivePage() {
       </div>
 
       {/* ── TOP STATUS BAR ── */}
-      <div className="absolute top-0 left-0 w-full z-20 pt-12 px-5 flex justify-between items-start pointer-events-none">
+      <div className="absolute top-0 left-0 w-full z-[9998] pt-12 px-5 flex justify-between items-start pointer-events-none">
         <div className="pointer-events-auto bg-white/95 backdrop-blur-md shadow-lg rounded-xl p-3 pr-5 flex items-center gap-3 max-w-[75%] border border-slate-100">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
             <span className="material-icons-round text-primary text-xl">near_me</span>
@@ -283,7 +320,7 @@ export default function TripActivePage() {
       </div>
 
       {/* ── BOTTOM SHEET ── */}
-      <div className="absolute bottom-0 left-0 w-full z-30">
+      <div className="absolute bottom-0 left-0 w-full z-[9999] isolate will-change-transform">
         <div className="bg-white rounded-t-3xl shadow-2xl p-6 pb-8 border-t border-slate-100">
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
 

@@ -152,7 +152,7 @@ export default function SubmitOfferPage() {
         </div>
 
         {/* Top Navigation / Cancel Area */}
-        <div className="absolute top-0 left-0 right-0 z-20 pt-12 pb-4 px-6 flex justify-between items-start pointer-events-none">
+        <div className="absolute top-0 left-0 right-0 z-[9998] pt-12 pb-4 px-6 flex justify-between items-start pointer-events-none">
           <div className="pointer-events-auto bg-surface-light/90 dark:bg-surface-dark/90 backdrop-blur-md rounded-full px-4 py-2 shadow-sm flex items-center gap-2 border border-gray-100 dark:border-gray-700">
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -169,7 +169,7 @@ export default function SubmitOfferPage() {
         </div>
 
         {/* Bottom Sheet Area */}
-        <div className="absolute bottom-0 left-0 right-0 z-30 flex flex-col max-h-[70vh]">
+        <div className="absolute bottom-0 left-0 right-0 z-[9999] flex flex-col max-h-[70vh] isolate will-change-transform">
           <div className="h-12 bg-gradient-to-t from-black/5 to-transparent w-full pointer-events-none"></div>
           <div className="bg-surface-light dark:bg-surface-dark rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border-t border-white/20 dark:border-white/5 flex flex-col overflow-hidden">
             {/* Sheet Handle */}
