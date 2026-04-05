@@ -374,11 +374,10 @@ export default function RideRequestPage() {
               </p>
             )}
           </div>
-        </div>
 
-        {/* Spacer */}
-        <div className="flex-grow"></div>
-      </div>
+          {/* Spacer */}
+          <div className="flex-grow"></div>
+        </div>
 
       {/* Footer Section */}
       <div className="bg-white dark:bg-slate-900 px-6 py-6 pb-8 border-t border-slate-100 dark:border-slate-800 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
