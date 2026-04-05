@@ -89,7 +89,7 @@ export default function EarningsPage() {
     try {
       await apiFetch('/wallet/withdraw', {
         method: 'POST',
-        body: JSON.stringify({ amount }),
+        body: { amount },
       });
       await fetchData();
       setShowWithdrawModal(false);
@@ -163,7 +163,7 @@ export default function EarningsPage() {
                 <div className="h-10 w-32 bg-slate-100 dark:bg-slate-700 animate-pulse rounded-lg mx-auto mb-6"></div>
               ) : (
                 <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
-                  ${(wallet?.balance ?? 0).toFixed(2)}
+                  ฿{(wallet?.balance ?? 0).toFixed(2)}
                 </h1>
               )}
               <button
@@ -297,7 +297,7 @@ export default function EarningsPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-primary mb-1">+${trip.fare?.toFixed(2) ?? '0.00'}</p>
+                    <p className="text-lg font-bold text-primary mb-1">+฿{trip.fare?.toFixed(2) ?? '0.00'}</p>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                       {trip.distance ? `${trip.distance.toFixed(1)} km` : '—'}
                     </span>
@@ -326,12 +326,12 @@ export default function EarningsPage() {
             </div>
             <div className="mb-4">
               <p className="text-xs text-slate-500 mb-1">Available Balance</p>
-              <p className="text-2xl font-bold text-primary">${(wallet?.balance ?? 0).toFixed(2)}</p>
+              <p className="text-2xl font-bold text-primary">฿{(wallet?.balance ?? 0).toFixed(2)}</p>
             </div>
             <div className="mb-6">
               <label className="text-sm font-medium text-slate-700 mb-2 block">Amount to Withdraw</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
                 <input
                   type="number"
                   value={withdrawAmount}

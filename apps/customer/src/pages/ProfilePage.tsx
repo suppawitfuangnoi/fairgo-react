@@ -25,9 +25,21 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await apiFetch<UserProfile>('/users/me');
-        setUser(response);
-        setNewName(response.name);
+        const raw = await apiFetch<any>('/users/me');
+        const o = raw?.data ?? raw;
+        // API may return profile nested under customerProfile
+        const profile = o?.customerProfile ?? o;
+        const mapped: UserProfile = {
+          id: o.id,
+          name: o.name || profile?.user?.name || profile?.name || 'ผู้ใช้',
+          phone: o.phone || profile?.user?.phone || profile?.phone || '',
+          avatar: o.avatar || o.avatarUrl || profile?.user?.avatarUrl,
+          totalTrips: o.totalTrips ?? profile?.totalTrips ?? 0,
+          averageRating: o.averageRating ?? profile?.averageRating ?? profile?.rating ?? 5.0,
+          joinDate: o.joinDate || o.createdAt || new Date().toISOString(),
+        };
+        setUser(mapped);
+        setNewName(mapped.name);
       } catch (err) {
         console.error('Failed to fetch user:', err);
       } finally {
@@ -151,7 +163,7 @@ export default function ProfilePage() {
           </p>
           <div className="flex items-center justify-center gap-1">
             <p className="text-3xl font-bold text-slate-900 dark:text-white">
-              {user.averageRating.toFixed(1)}
+              {(user.averageRating ?? 5).toFixed(1)}
             </p>
             <span className="material-icons-round text-yellow-400">star</span>
           </div>

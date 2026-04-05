@@ -35,11 +35,27 @@ export default function HistoryPage() {
     if (p === 1) setLoading(true); else setLoadingMore(true);
     try {
       const statusParam = f === 'All' ? '' : `&status=${f.toUpperCase()}`;
-      // API returns { trips: [], meta: { ... } } after auto-unwrap
-      const res = await apiFetch<{ trips: Trip[]; meta?: { total: number; totalPages: number; page: number } }>(
-        `/trips?page=${p}&limit=15${statusParam}`
-      );
-      const tripList = Array.isArray(res) ? (res as any) : (res?.trips || []);
+      const res = await apiFetch<any>(`/trips?page=${p}&limit=15${statusParam}`);
+      const rawList: any[] = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.trips) ? res.trips
+        : Array.isArray(res?.data) ? res.data
+        : [];
+      const tripList: Trip[] = rawList.map((o: any) => ({
+        id: o.id,
+        status: o.status,
+        fare: Number(o.lockedFare ?? o.offer?.fareAmount ?? o.fare ?? 0),
+        distance: o.actualDistance ? Number(o.actualDistance) : o.estimatedDistance ? Number(o.estimatedDistance) : Number(o.distance ?? 0),
+        pickupAddress: o.pickupAddress || o.rideRequest?.pickupAddress || 'ต้นทาง',
+        dropoffAddress: o.dropoffAddress || o.rideRequest?.dropoffAddress || 'ปลายทาง',
+        completedAt: o.completedAt,
+        cancelledAt: o.cancelledAt,
+        createdAt: o.createdAt || o.startedAt,
+        customer: o.customer || (o.rideRequest?.customerProfile?.user ? {
+          name: o.rideRequest.customerProfile.user.name || o.rideRequest.customerProfile.user.phone || 'ผู้โดยสาร',
+          avatarUrl: o.rideRequest.customerProfile.user.avatarUrl,
+        } : undefined),
+      }));
       if (p === 1) setTrips(tripList);
       else setTrips(prev => [...prev, ...tripList]);
       setHasMore(tripList.length === 15);
@@ -169,7 +185,7 @@ export default function HistoryPage() {
                         </h4>
                         {isCompleted && (
                           <span className="text-sm font-bold text-primary shrink-0">
-                            +${trip.fare?.toFixed(2) ?? '0.00'}
+                            +฿{trip.fare?.toFixed(2) ?? '0.00'}
                           </span>
                         )}
                       </div>

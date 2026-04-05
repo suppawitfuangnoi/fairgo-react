@@ -25,15 +25,62 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchTrips = async () => {
       try {
-        const response = await apiFetch<{ trips: HistoryTrip[]; hasMore: boolean }>(
-          `/trips?limit=20&page=${page}`
-        );
+        const response = await apiFetch<any>(`/trips?limit=20&page=${page}`);
+        // API may return array directly, or { trips: [...], hasMore: bool }, or { data: [...] }
+        const rawTrips: any[] = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.trips)
+          ? response.trips
+          : Array.isArray(response?.data)
+          ? response.data
+          : [];
+        const mapped: HistoryTrip[] = rawTrips.map((o: any) => {
+          const dropoff =
+            o.dropoffAddress ||
+            o.rideRequest?.dropoffAddress ||
+            o.rideRequest?.customerProfile?.dropoffAddress ||
+            'ปลายทาง';
+          const pickup =
+            o.pickupAddress ||
+            o.rideRequest?.pickupAddress ||
+            o.rideRequest?.customerProfile?.pickupAddress ||
+            'ต้นทาง';
+          const fare = o.lockedFare ?? o.offer?.fareAmount ?? o.fare ?? 0;
+          const distance = o.actualDistance
+            ? Number(o.actualDistance)
+            : o.estimatedDistance
+            ? Number(o.estimatedDistance)
+            : (o.distance ?? 0);
+          const dateStr = o.startedAt || o.createdAt || o.date || new Date().toISOString();
+          const driverName =
+            o.driverProfile?.user?.name ||
+            o.driver?.name ||
+            o.driverName ||
+            '';
+          return {
+            id: o.id,
+            route: `${pickup} → ${dropoff}`,
+            pickupAddress: pickup,
+            dropoffAddress: dropoff,
+            fare: Number(fare),
+            date: dateStr,
+            time: dateStr,
+            driverName,
+            status: o.status === 'CANCELLED' ? 'CANCELLED' : 'COMPLETED',
+            distance: Number(distance),
+          };
+        });
         if (page === 1) {
-          setTrips(response.trips || []);
+          setTrips(mapped);
         } else {
-          setTrips((prev) => [...prev, ...(response.trips || [])]);
+          setTrips((prev) => [...prev, ...mapped]);
         }
-        setHasMore(response.hasMore || false);
+        const hasMoreVal =
+          response?.hasMore ??
+          response?.pagination?.hasMore ??
+          response?.meta?.hasMore ??
+          false;
+        setHasMore(Boolean(hasMoreVal));
       } catch (err) {
         console.error('Failed to fetch trips:', err);
       } finally {
@@ -48,21 +95,25 @@ export default function HistoryPage() {
     setPage((prev) => prev + 1);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '—';
+    try {
+      return new Date(dateString).toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch { return '—'; }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('th-TH', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return '—';
+    try {
+      return new Date(dateString).toLocaleTimeString('th-TH', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch { return '—'; }
   };
 
   if (loading && trips.length === 0) {
