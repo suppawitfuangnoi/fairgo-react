@@ -35,21 +35,19 @@ export default function ProfilePage() {
   async function fetchProfile() {
     setLoading(true);
     try {
-      const res = await apiFetch<{ data: DriverProfile }>('/api/v1/users/me');
-      if (res.data) {
-        setProfile(res.data);
-        setForm({
-          name: res.data.name || '',
-          phone: res.data.phone || '',
-          vehicleModel: res.data.vehicleModel || '',
-          vehiclePlate: res.data.vehiclePlate || '',
-          vehicleColor: res.data.vehicleColor || '',
-        });
-      }
+      const res = await apiFetch<DriverProfile>('/users/me');
+      setProfile(res);
+      setForm({
+        name: res.name || '',
+        phone: res.phone || '',
+        vehicleModel: res.vehicleModel || '',
+        vehiclePlate: res.vehiclePlate || '',
+        vehicleColor: res.vehicleColor || '',
+      });
     } catch {
       // Use auth store user as fallback
       if (user) {
-        const p: DriverProfile = { id: user.id, name: user.name, email: user.email, phone: '', rating: 4.8, totalTrips: 234 };
+        const p: DriverProfile = { id: user.id, name: user.name, email: user.email ?? '', phone: '', rating: 4.8, totalTrips: 234 };
         setProfile(p);
         setForm({ name: p.name, phone: '', vehicleModel: '', vehiclePlate: '', vehicleColor: '' });
       }
@@ -61,9 +59,9 @@ export default function ProfilePage() {
   async function handleSave() {
     setSaving(true);
     try {
-      await apiFetch('/api/v1/users/me', {
+      await apiFetch('/users/me', {
         method: 'PATCH',
-        body: JSON.stringify(form),
+        body: form,
       });
       await fetchProfile();
       setEditing(false);

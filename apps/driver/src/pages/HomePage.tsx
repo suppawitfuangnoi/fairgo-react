@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { apiFetch } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
-import { socketClient, socketEvents } from '@fairgo/api-client';
+import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 
 interface RideRequest {

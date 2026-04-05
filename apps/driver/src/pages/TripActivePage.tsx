@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
-import { socketClient, socketEvents } from '@fairgo/api-client';
+import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 
 interface ChatMessage {
