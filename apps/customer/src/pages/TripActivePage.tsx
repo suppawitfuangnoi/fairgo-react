@@ -57,6 +57,7 @@ function mapTrip(o: any): ActiveTrip {
       o.vehiclePlate ||
       '',
     fare:
+      o.lockedFare ??
       o.offer?.fareAmount ??
       o.acceptedOffer?.fareAmount ??
       o.offers?.find((of: any) => of.status === 'ACCEPTED')?.fareAmount ??

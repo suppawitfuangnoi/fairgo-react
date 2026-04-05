@@ -47,7 +47,7 @@ export default function TripSummaryPage() {
             dropoffAddress: raw.dropoffAddress || '',
             distance: raw.estimatedDistance ? Number(raw.estimatedDistance) : (raw.distance ?? 0),
             duration: raw.estimatedDuration ?? raw.duration ?? 0,
-            fare: raw.offer?.fareAmount ?? raw.fare ?? 0,
+            fare: raw.lockedFare ?? raw.offer?.fareAmount ?? raw.fare ?? 0,
             startTime: raw.startTime || raw.createdAt || '',
             endTime: raw.endTime || raw.completedAt || '',
             driverName: raw.driverProfile?.user?.name || raw.driver?.name || raw.driverName || 'คนขับ',
@@ -55,7 +55,7 @@ export default function TripSummaryPage() {
             vehiclePlate: raw.driverProfile?.vehicles?.[0]?.plateNumber || raw.vehiclePlate || '',
             paymentMethod: raw.paymentMethod || 'เงินสด',
             fareBreakdown: {
-              baseFare: raw.offer?.fareAmount ?? raw.fare ?? 0,
+              baseFare: raw.lockedFare ?? raw.offer?.fareAmount ?? raw.fare ?? 0,
               fairPriceDeal: raw.fareBreakdown?.fairPriceDeal,
               promo: raw.fareBreakdown?.promo,
             },

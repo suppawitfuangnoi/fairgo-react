@@ -38,12 +38,15 @@ export default function TripSummaryPage() {
       if (tripData?.id) setTrip({
         ...tripData,
         customer: tripData.customer || {
-          name: tripData.customerProfile?.user?.name || 'ผู้โดยสาร',
+          name: tripData.rideRequest?.customerProfile?.user?.name
+            || tripData.customerProfile?.user?.name
+            || tripData.rideRequest?.customerProfile?.user?.phone
+            || 'ผู้โดยสาร',
           avatarUrl: tripData.customerProfile?.user?.avatarUrl,
-          rating: tripData.customerProfile?.rating,
+          rating: tripData.customerProfile?.averageRating ?? tripData.customerProfile?.rating,
         },
-        fare: tripData.offer?.fareAmount ?? tripData.fare ?? 0,
-        baseFare: tripData.offer?.fareAmount ?? tripData.fare ?? 0,
+        fare: tripData.lockedFare ?? tripData.offer?.fareAmount ?? tripData.fare ?? 0,
+        baseFare: tripData.lockedFare ?? tripData.offer?.fareAmount ?? tripData.fare ?? 0,
         distance: tripData.estimatedDistance ? Number(tripData.estimatedDistance) : (tripData.distance ?? 0),
         duration: tripData.estimatedDuration ?? tripData.duration,
       });
