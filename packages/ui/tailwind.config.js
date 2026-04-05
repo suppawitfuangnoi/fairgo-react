@@ -13,6 +13,11 @@ module.exports = {
         'primary-light': '#e8fafd',
         'bg-light': '#f6f8f8',
         'bg-dark': '#101f22',
+        // Alias tokens used by driver & customer apps
+        'background-light': '#f6f8f8',
+        'background-dark': '#101f22',
+        'surface-light': '#ffffff',
+        'surface-dark': '#1a2f33',
         success: '#22c55e',
         warning: '#f59e0b',
         danger: '#ef4444',

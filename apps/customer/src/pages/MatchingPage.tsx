@@ -20,6 +20,20 @@ interface DriverOffer {
   isBestMatch?: boolean;
 }
 
+function mapOffer(o: any): DriverOffer {
+  return {
+    id: o.id,
+    driverId: o.driverProfile?.userId || o.driverId || '',
+    driverName: o.driverProfile?.user?.name || o.driverName || 'คนขับ',
+    rating: o.driverProfile?.averageRating ?? o.rating ?? 4.8,
+    vehiclePlate: o.driverProfile?.vehicles?.[0]?.plateNumber || o.vehiclePlate || '',
+    vehicleModel: o.driverProfile?.vehicles?.[0]?.model || o.vehicleModel,
+    eta: o.estimatedPickupMinutes ?? o.eta ?? 5,
+    fare: o.fareAmount ?? o.fare ?? 0,
+    isBestMatch: o.isBestMatch,
+  };
+}
+
 export default function MatchingPage() {
   const navigate = useNavigate();
   const { position } = useGeolocation();
@@ -36,11 +50,11 @@ export default function MatchingPage() {
   useEffect(() => {
     (async () => {
       try {
-        const ride = await apiFetch<{ id: string; offeredFare?: number; offers: DriverOffer[] }>('/rides/active');
+        const ride = await apiFetch<{ id: string; offeredFare?: number; offers: any[] }>('/rides/active');
         if (ride?.id) {
           setRideId(ride.id);
           if (ride.offeredFare) setUserFare(ride.offeredFare);
-          if (ride.offers?.length) setOffers(ride.offers);
+          if (ride.offers?.length) setOffers(ride.offers.map(mapOffer));
         }
       } catch {
         // no active ride — stay on page, user can cancel
@@ -52,7 +66,8 @@ export default function MatchingPage() {
   useEffect(() => {
     const socket = socketClient.connect();
 
-    const onNewOffer = (offer: DriverOffer) => {
+    const onNewOffer = (rawOffer: any) => {
+      const offer = mapOffer(rawOffer);
       setOffers(prev => {
         if (prev.find(o => o.id === offer.id)) return prev;
         return [...prev, offer];
@@ -76,8 +91,8 @@ export default function MatchingPage() {
     // Fallback polling every 8s
     pollRef.current = setInterval(async () => {
       try {
-        const ride = await apiFetch<{ id: string; offers: DriverOffer[] }>('/rides/active');
-        if (ride?.offers?.length) setOffers(ride.offers);
+        const ride = await apiFetch<{ id: string; offers: any[] }>('/rides/active');
+        if (ride?.offers?.length) setOffers(ride.offers.map(mapOffer));
       } catch { /* ignore */ }
     }, 8000);
 
@@ -278,7 +293,7 @@ export default function MatchingPage() {
                       </p>
                       <div className="flex items-center gap-1 mt-1">
                         <span className="material-icons-round text-yellow-400 text-sm">star</span>
-                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{offer.rating.toFixed(1)}</span>
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{(offer.rating ?? 4.8).toFixed(1)}</span>
                       </div>
                     </div>
                   </div>
