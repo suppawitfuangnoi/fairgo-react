@@ -34,8 +34,16 @@ export default function RatingPage() {
     const fetchTrip = async () => {
       if (!tripId) return;
       try {
-        const response = await apiFetch<TripForRating>(`/trips/${tripId}`);
-        setTrip(response);
+        const raw = await apiFetch<any>(`/trips/${tripId}`);
+        const o = raw?.data ?? raw;
+        setTrip({
+          id: o.id,
+          driverName: o.driverProfile?.user?.name || o.driverName || 'คนขับ',
+          driverId: o.driverProfile?.userId || o.driverProfileId || o.driverId || '',
+          distance: o.actualDistance ? Number(o.actualDistance) : o.estimatedDistance ? Number(o.estimatedDistance) : (o.distance ?? 0),
+          duration: o.actualDuration ?? o.estimatedDuration ?? o.duration ?? 0,
+          fare: o.lockedFare ?? o.offer?.fareAmount ?? o.fare ?? 0,
+        });
       } catch (err) {
         console.error('Failed to fetch trip:', err);
       } finally {

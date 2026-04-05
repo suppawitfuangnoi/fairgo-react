@@ -32,10 +32,22 @@ export default function RatingPage() {
   async function fetchTrip() {
     setLoading(true);
     try {
-      const res = await apiFetch<{ data: TripForRating }>(`/api/v1/trips/${tripId}`);
-      if (res.data) setTrip(res.data);
+      const raw = await apiFetch<any>(`/trips/${tripId}`);
+      const o = raw?.data ?? raw;
+      setTrip({
+        id: o.id,
+        customer: {
+          name: o.rideRequest?.customerProfile?.user?.name
+            || o.customerProfile?.user?.name
+            || o.rideRequest?.customerProfile?.user?.phone
+            || 'ผู้โดยสาร',
+          avatarUrl: o.customerProfile?.user?.avatarUrl,
+        },
+        fare: o.lockedFare ?? o.offer?.fareAmount ?? o.fare ?? 0,
+        distance: o.actualDistance ? Number(o.actualDistance) : o.estimatedDistance ? Number(o.estimatedDistance) : (o.distance ?? 0),
+        duration: o.actualDuration ?? o.estimatedDuration ?? o.duration,
+      });
     } catch {
-      // Fallback
       setTrip({ id: tripId!, fare: 0, distance: 0 });
     } finally {
       setLoading(false);
@@ -52,13 +64,13 @@ export default function RatingPage() {
     if (rating === 0) return;
     setSubmitting(true);
     try {
-      await apiFetch(`/api/v1/trips/${tripId}/rate`, {
+      await apiFetch(`/trips/${tripId}/rate`, {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           rating,
           comment: comment.trim() || undefined,
           tags: selectedChips,
-        }),
+        },
       });
       navigate('/home', { replace: true });
     } catch (err: any) {
@@ -154,7 +166,7 @@ export default function RatingPage() {
                   <>
                     <div className="flex items-center gap-1">
                       <span className="material-icons-round text-green-500 text-sm">payments</span>
-                      <span>${trip.fare.toFixed(2)}</span>
+                      <span>฿{trip.fare.toFixed(2)}</span>
                     </div>
                     {trip.duration && <div className="w-px h-3 bg-slate-300 dark:bg-slate-600"></div>}
                   </>
