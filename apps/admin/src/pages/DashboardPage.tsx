@@ -36,7 +36,7 @@ export default function DashboardPage() {
     const handleTripUpdate = (data: any) => {
       // Silently refetch data on update
       apiFetch<DashboardData>('/admin/dashboard').then(setStats).catch(console.error);
-      apiFetch<Trip[]>('/admin/trips?limit=10').then(res => setTrips(res || [])).catch(console.error);
+      apiFetch<{ trips: Trip[] }>('/admin/trips?limit=10').then(res => setTrips(res.trips || [])).catch(console.error);
       if (data?.status === 'COMPLETED') toast.success('Trip completed');
       else if (data?.type === 'new_request') toast.info('New ride request incoming');
     };
@@ -58,10 +58,10 @@ export default function DashboardPage() {
       setLoading(true);
       const [dashboardRes, tripsRes] = await Promise.all([
         apiFetch<DashboardData>('/admin/dashboard'),
-        apiFetch<Trip[]>('/admin/trips?limit=10'),
+        apiFetch<{ trips: Trip[] }>('/admin/trips?limit=10'),
       ]);
       setStats(dashboardRes);
-      setTrips(tripsRes || []);
+      setTrips(tripsRes.trips || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {

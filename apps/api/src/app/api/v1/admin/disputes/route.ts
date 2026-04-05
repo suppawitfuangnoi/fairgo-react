@@ -18,21 +18,11 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status;
     if (priority) where.priority = priority;
 
-    const [tickets, total] = await Promise.all([
+    const [rawTickets, total] = await Promise.all([
       prisma.supportTicket.findMany({
         where,
         include: {
           user: { select: { id: true, name: true, phone: true, role: true } },
-          trip: {
-            select: {
-              id: true,
-              lockedFare: true,
-              status: true,
-              rideRequest: {
-                select: { pickupAddress: true, dropoffAddress: true },
-              },
-            },
-          },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
@@ -40,6 +30,19 @@ export async function GET(request: NextRequest) {
       }),
       prisma.supportTicket.count({ where }),
     ]);
+
+    // Reshape to front-end Dispute shape
+    const tickets = rawTickets.map((t) => ({
+      id: t.id,
+      title: t.subject,
+      description: t.description,
+      priority: t.priority,
+      status: t.status,
+      reporter: t.user?.name ?? "Unknown",
+      tripId: t.tripId ?? undefined,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    }));
 
     return successResponse({
       tickets,

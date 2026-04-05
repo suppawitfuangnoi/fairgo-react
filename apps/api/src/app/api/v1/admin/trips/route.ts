@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
 
-    const [trips, total] = await Promise.all([
+    const [rawTrips, total] = await Promise.all([
       prisma.trip.findMany({
         where,
         include: {
@@ -23,18 +23,16 @@ export async function GET(request: NextRequest) {
             include: {
               customerProfile: {
                 include: {
-                  user: { select: { name: true, avatarUrl: true } },
+                  user: { select: { name: true } },
                 },
               },
             },
           },
           driverProfile: {
             include: {
-              user: { select: { name: true, avatarUrl: true } },
+              user: { select: { name: true } },
             },
           },
-          vehicle: true,
-          payment: true,
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
@@ -42,6 +40,20 @@ export async function GET(request: NextRequest) {
       }),
       prisma.trip.count({ where }),
     ]);
+
+    // Reshape to flat structure for front-end
+    const trips = rawTrips.map((t) => ({
+      id: t.id,
+      user: { name: t.rideRequest?.customerProfile?.user?.name ?? "Unknown" },
+      driver: { name: t.driverProfile?.user?.name ?? "Unknown" },
+      pickup: t.pickupAddress,
+      dropoff: t.dropoffAddress,
+      fare: t.lockedFare,
+      status: t.status,
+      distance: t.actualDistance,
+      duration: t.actualDuration,
+      createdAt: t.createdAt,
+    }));
 
     return successResponse({
       trips,

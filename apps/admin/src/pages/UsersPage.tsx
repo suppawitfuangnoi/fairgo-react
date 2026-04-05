@@ -45,10 +45,10 @@ export default function UsersPage() {
         ...(role && { role }),
         ...(status && { status }),
       });
-      const response = await apiFetch<User[]>(
+      const response = await apiFetch<{ users: User[] }>(
         `/admin/users?${params}`
       );
-      setUsers(response || []);
+      setUsers(response.users || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {

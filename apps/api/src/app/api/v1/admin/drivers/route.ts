@@ -26,14 +26,12 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const [drivers, total] = await Promise.all([
+    const [rawDrivers, total] = await Promise.all([
       prisma.driverProfile.findMany({
         where: { ...where, user: userWhere },
         include: {
           user: { select: { id: true, name: true, phone: true, email: true, status: true, createdAt: true } },
           vehicles: { where: { isActive: true }, take: 1 },
-          documents: true,
-          wallet: { select: { balance: true } },
           _count: { select: { trips: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -42,6 +40,23 @@ export async function GET(request: NextRequest) {
       }),
       prisma.driverProfile.count({ where: { ...where, user: userWhere } }),
     ]);
+
+    // Reshape to flat structure for front-end
+    const drivers = rawDrivers.map((d) => ({
+      id: d.id,
+      userId: d.user.id,
+      name: d.user.name ?? "Unknown",
+      phone: d.user.phone,
+      email: d.user.email,
+      vehicleType: d.vehicles[0]?.type ?? "TAXI",
+      vehiclePlate: d.vehicles[0]?.plateNumber ?? "-",
+      status: d.verificationStatus,
+      rating: d.averageRating,
+      trips: d._count.trips,
+      isVerified: d.isVerified,
+      isOnline: d.isOnline,
+      createdAt: d.createdAt,
+    }));
 
     return successResponse({
       drivers,

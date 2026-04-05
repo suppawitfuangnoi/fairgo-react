@@ -5,8 +5,8 @@ interface PricingRule {
   id: string;
   vehicleType: 'TAXI' | 'MOTORCYCLE' | 'TUKTUK';
   baseFare: number;
-  perKm: number;
-  perMinute: number;
+  perKmRate: number;
+  perMinuteRate: number;
   minimumFare: number;
   surgeMultiplier: number;
   isActive: boolean;
@@ -48,9 +48,9 @@ export default function PricingPage() {
 
   const handleSave = async (rule: PricingRule) => {
     try {
-      await apiFetch(`/admin/pricing/${rule.id}`, {
-        method: 'PATCH',
-        body: editData,
+      await apiFetch(`/admin/pricing`, {
+        method: 'PUT',
+        body: { ...editData, vehicleType: rule.vehicleType },
       });
       showToast('Pricing updated successfully', 'success');
       fetchPricing();
@@ -148,9 +148,9 @@ export default function PricingPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={editData.perKm || 0}
+                        value={editData.perKmRate || 0}
                         onChange={(e) =>
-                          setEditData({ ...editData, perKm: parseFloat(e.target.value) })
+                          setEditData({ ...editData, perKmRate: parseFloat(e.target.value) })
                         }
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white"
                       />
@@ -162,9 +162,9 @@ export default function PricingPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={editData.perMinute || 0}
+                        value={editData.perMinuteRate || 0}
                         onChange={(e) =>
-                          setEditData({ ...editData, perMinute: parseFloat(e.target.value) })
+                          setEditData({ ...editData, perMinuteRate: parseFloat(e.target.value) })
                         }
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-white"
                       />
@@ -242,7 +242,7 @@ export default function PricingPage() {
                           Per KM
                         </p>
                         <p className="text-lg font-bold text-slate-900 dark:text-white">
-                          ฿{rule.perKm.toFixed(2)}
+                          ฿{rule.perKmRate.toFixed(2)}
                         </p>
                       </div>
                       <div>
@@ -250,7 +250,7 @@ export default function PricingPage() {
                           Per Minute
                         </p>
                         <p className="text-lg font-bold text-slate-900 dark:text-white">
-                          ฿{rule.perMinute.toFixed(2)}
+                          ฿{rule.perMinuteRate.toFixed(2)}
                         </p>
                       </div>
                       <div>
