@@ -59,30 +59,40 @@ interface Trip {
 }
 
 function mapTrip(o: any): Trip {
+  const passengerName =
+    o.rideRequest?.customerProfile?.user?.name ||
+    o.customerProfile?.user?.name ||
+    o.customer?.name ||
+    o.passengerName ||
+    null;
+  const passengerPhone =
+    o.rideRequest?.customerProfile?.user?.phone ||
+    o.customerProfile?.user?.phone ||
+    o.customer?.phone ||
+    o.passengerPhone ||
+    '';
   return {
     id: o.id,
     status: o.status,
-    passengerName:
-      o.customerProfile?.user?.name ||
-      o.customer?.name ||
-      o.passengerName ||
-      'ผู้โดยสาร',
-    passengerPhone:
-      o.customerProfile?.user?.phone ||
-      o.customer?.phone ||
-      o.passengerPhone ||
-      '',
+    passengerName: passengerName || passengerPhone || 'ผู้โดยสาร',
+    passengerPhone,
     pickupAddress: o.pickupAddress || '',
     dropoffAddress: o.dropoffAddress || '',
     fare:
+      o.lockedFare ??
       o.offer?.fareAmount ??
       o.acceptedOffer?.fareAmount ??
+      o.offers?.find((of: any) => of.status === 'ACCEPTED')?.fareAmount ??
       o.fare ??
       0,
-    distance: o.estimatedDistance
+    distance: o.actualDistance
+      ? `${Number(o.actualDistance).toFixed(1)} km`
+      : o.estimatedDistance
       ? `${Number(o.estimatedDistance).toFixed(1)} km`
       : o.distance || '',
-    duration: o.estimatedDuration
+    duration: o.actualDuration
+      ? `${o.actualDuration} min`
+      : o.estimatedDuration
       ? `${o.estimatedDuration} min`
       : o.duration || '',
   };
@@ -461,7 +471,7 @@ export default function TripActivePage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                   onClick={() => setChatOpen(true)}
                   className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold active:scale-[0.98] transition-all hover:bg-slate-200 dark:hover:bg-slate-600"
@@ -471,12 +481,30 @@ export default function TripActivePage() {
                 </button>
                 <button
                   onClick={handleCallPassenger}
-                  className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/30 active:scale-[0.98] transition-all hover:bg-primary-dark"
+                  className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold active:scale-[0.98] transition-all hover:bg-slate-200 dark:hover:bg-slate-600"
                 >
                   <span className="material-icons-round text-xl">call</span>
-                  Call Driver
+                  โทรหา
                 </button>
               </div>
+
+              {/* Primary Status Action Button */}
+              {trip.status !== 'COMPLETED' && (
+                <button
+                  onClick={handleNextStatus}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-primary text-white font-bold text-base shadow-lg shadow-primary/30 active:scale-[0.98] transition-all hover:bg-primary-dark disabled:opacity-60"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span className="material-icons-round text-xl">arrow_forward</span>
+                      {STATUS_ACTIONS[trip.status]}
+                    </>
+                  )}
+                </button>
+              )}
 
               {/* Bottom safe area spacer */}
               <div className="h-4 w-full"></div>
