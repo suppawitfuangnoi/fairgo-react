@@ -36,14 +36,30 @@ export default function ProfilePage() {
   async function fetchProfile() {
     setLoading(true);
     try {
-      const res = await apiFetch<DriverProfile>('/users/me/driver-profile');
-      setProfile(res);
+      // GET /users/me returns user with driverProfile & vehicles included
+      const res = await apiFetch<any>('/users/me');
+      const dp = res?.driverProfile;
+      const profileData: DriverProfile = {
+        id: res?.id || '',
+        name: res?.name || '',
+        email: res?.email || '',
+        phone: res?.phone || '',
+        avatarUrl: res?.avatarUrl,
+        rating: dp?.rating,
+        totalTrips: dp?.totalTrips,
+        vehicleModel: dp?.vehicles?.[0]?.model || '',
+        vehiclePlate: dp?.vehicles?.[0]?.plateNumber || '',
+        vehicleColor: dp?.vehicles?.[0]?.color || '',
+        isOnline: dp?.isOnline,
+        isVerified: dp?.isVerified,
+      };
+      setProfile(profileData);
       setForm({
-        name: res.name || '',
-        phone: res.phone || '',
-        vehicleModel: res.vehicleModel || '',
-        vehiclePlate: res.vehiclePlate || '',
-        vehicleColor: res.vehicleColor || '',
+        name: profileData.name,
+        phone: profileData.phone,
+        vehicleModel: profileData.vehicleModel || '',
+        vehiclePlate: profileData.vehiclePlate || '',
+        vehicleColor: profileData.vehicleColor || '',
       });
     } catch {
       // Use auth store user as fallback

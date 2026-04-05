@@ -35,15 +35,15 @@ export default function HistoryPage() {
     if (p === 1) setLoading(true); else setLoadingMore(true);
     try {
       const statusParam = f === 'All' ? '' : `&status=${f.toUpperCase()}`;
-      const res = await apiFetch<{ data: Trip[]; meta?: { hasNext: boolean } }>(
-        `/api/v1/trips?page=${p}&limit=15${statusParam}`
+      // API returns { trips: [], meta: { ... } } after auto-unwrap
+      const res = await apiFetch<{ trips: Trip[]; meta?: { total: number; totalPages: number; page: number } }>(
+        `/trips?page=${p}&limit=15${statusParam}`
       );
-      if (res.data) {
-        if (p === 1) setTrips(res.data);
-        else setTrips(prev => [...prev, ...res.data]);
-        setHasMore(res.meta?.hasNext ?? res.data.length === 15);
-        setPage(p);
-      }
+      const tripList = Array.isArray(res) ? (res as any) : (res?.trips || []);
+      if (p === 1) setTrips(tripList);
+      else setTrips(prev => [...prev, ...tripList]);
+      setHasMore(tripList.length === 15);
+      setPage(p);
     } catch {
       if (p === 1) setTrips([]);
     } finally {

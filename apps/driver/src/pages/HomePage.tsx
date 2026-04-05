@@ -74,14 +74,23 @@ export default function HomePage() {
 
     const fetchRides = async () => {
       try {
-        const response = await apiFetch<{ data: { rides: RideRequest[]; totalTrips: number; totalEarnings: number } }>(
+        // API returns array of rideRequest objects with customerProfile included
+        const rawRides = await apiFetch<any[]>(
           `/rides/nearby?latitude=${position.lat}&longitude=${position.lng}&radius=10`
         );
-        if (response.data) {
-          setRides(response.data.rides || []);
-          setTodayTrips(response.data.totalTrips || 0);
-          setTodayEarnings(response.data.totalEarnings || 0);
-        }
+        const rides = Array.isArray(rawRides) ? rawRides.map((r: any): RideRequest => ({
+          id: r.id,
+          passengerName: r.customerProfile?.user?.name || 'ผู้โดยสาร',
+          passengerRating: r.customerProfile?.rating ?? 4.8,
+          passengerTrips: r._count?.offers ?? 0,
+          pickupAddress: r.pickupAddress,
+          dropoffAddress: r.dropoffAddress,
+          distance: r.estimatedDistance ? `${Number(r.estimatedDistance).toFixed(1)} km` : `${r.distanceFromDriver ?? 0} km`,
+          duration: r.estimatedDuration ? `${r.estimatedDuration} min` : '—',
+          fareOffer: r.fareOffer,
+          vehicleType: r.vehicleType,
+        })) : [];
+        setRides(rides);
       } catch { /* ignore */ }
     };
 
@@ -123,7 +132,7 @@ export default function HomePage() {
     try {
       await apiFetch('/users/me/driver-profile', {
         method: 'PATCH',
-        body: JSON.stringify({ isOnline: !isOnline }),
+        body: { isOnline: !isOnline },
       });
       const next = !isOnline;
       setIsOnline(next);

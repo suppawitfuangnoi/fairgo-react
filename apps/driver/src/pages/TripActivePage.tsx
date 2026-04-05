@@ -230,7 +230,7 @@ export default function TripActivePage() {
       const nextStatus = NEXT_STATUS[trip.status];
       await apiFetch(`/trips/${trip.id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: nextStatus }),
+        body: { status: nextStatus },
       });
 
       setTrip({ ...trip, status: nextStatus });
