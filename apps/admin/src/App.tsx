@@ -11,6 +11,7 @@ import TripsPage from '@/pages/TripsPage';
 import PricingPage from '@/pages/PricingPage';
 import DisputesPage from '@/pages/DisputesPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
+import PromosPage from '@/pages/PromosPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -84,6 +85,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/promos"
+          element={
+            <ProtectedRoute>
+              <PromosPage />
             </ProtectedRoute>
           }
         />

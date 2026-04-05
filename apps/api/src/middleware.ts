@@ -16,6 +16,9 @@ function getAllowedOrigins(): string[] {
   if (process.env.CUSTOMER_APP_URL && process.env.CUSTOMER_APP_URL !== "*") {
     origins.push(process.env.CUSTOMER_APP_URL.replace(/\/$/, ""));
   }
+  if (process.env.DRIVER_APP_URL && process.env.DRIVER_APP_URL !== "*") {
+    origins.push(process.env.DRIVER_APP_URL.replace(/\/$/, ""));
+  }
   return origins;
 }
 

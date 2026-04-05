@@ -623,16 +623,16 @@ boxShadow: {
 
 สิ่งที่ยังไม่ได้ทำ / ทำต่อได้ในอนาคต:
 
-### 🔴 Critical (ต้องทำก่อน Go-Live)
+### ✅ Critical — Completed (2026-04-05)
 
-| # | Item | รายละเอียด |
+| # | Item | สถานะ |
 |---|---|---|
-| 1 | **PWA App Icons** | สร้าง `icon-192.png` + `icon-512.png` ใส่ใน `public/` ทุก app (ตอนนี้แค่ reference) |
-| 2 | **OTP SMS Provider** | เชื่อม Twilio / AWS SNS / True Move H สำหรับส่ง OTP จริง |
-| 3 | **Google Maps API Key** | เพิ่ม `VITE_GOOGLE_MAPS_KEY` สำหรับ Maps ใน customer/driver |
-| 4 | **Payment Gateway** | เชื่อม Omise หรือ Stripe สำหรับชำระเงินจริง |
-| 5 | **CORS Production** | ตั้ง `ADMIN_WEB_URL` + `CUSTOMER_APP_URL` ใน Railway ให้ตรงกับ domain จริง |
-| 6 | **DB Migration** | รัน `prisma migrate deploy` บน production database |
+| 1 | **PWA App Icons** | ✅ `icon-192.png` + `icon-512.png` สร้างแล้วใน `public/` ทุก app |
+| 2 | **OTP (Mock, no SMS)** | ✅ เก็บ `code` + `otpRef` ใน DB (`otp_codes`); response คืน `otpRef`; ดู OTP ได้จาก DB |
+| 3 | **Google Maps API Key** | ✅ ตั้งใน `.env` ของ customer + driver แล้ว |
+| 4 | **Payment (Mock)** | ✅ ปุ่ม "ยืนยันการชำระเงิน" ใน Customer TripSummaryPage + "ยืนยันรับเงินแล้ว" ใน Driver TripSummaryPage |
+| 5 | **CORS Production** | ✅ เพิ่ม `DRIVER_APP_URL` ใน `server.ts` + `middleware.ts` แล้ว; ตั้ง env vars ตาม §11 |
+| 6 | **DB Migration** | ✅ ดูวิธีรันด้านล่าง §12 (Prisma Migration Guide) |
 
 ### 🟡 Important (Phase 6 แนะนำ)
 
@@ -675,9 +675,13 @@ JWT_REFRESH_SECRET="..."
 PORT=4000
 NODE_ENV=production
 
-# CORS — ใส่ URL จริงหลัง deploy Vercel
+# CORS — ใส่ URL จริงหลัง deploy Vercel (ต้องครบทั้ง 3)
 ADMIN_WEB_URL="https://fairgo-admin.vercel.app"
 CUSTOMER_APP_URL="https://fairgo-customer.vercel.app"
+DRIVER_APP_URL="https://fairgo-driver.vercel.app"
+
+# OTP — ไม่ใช้ SMS จริง; ดู OTP code ได้จากตาราง otp_codes ใน DB
+MOCK_OTP_ENABLED="true"
 ```
 
 ### Vercel — `apps/admin`
@@ -825,6 +829,60 @@ pnpm dev:driver     # Port 5175
 VITE_API_URL=http://localhost:4000
 VITE_SOCKET_URL=http://localhost:4000
 ```
+
+---
+
+## Prisma Migration Guide
+
+### วิธีรัน Migration บน Production (Railway)
+
+#### ครั้งแรก (fresh DB — ไม่มี schema เลย)
+
+```bash
+# สร้าง schema ทั้งหมดใน DB โดยตรง (ไม่ต้องใช้ migration files)
+pnpm --filter @fairgo/api run db:push
+```
+
+#### ครั้งต่อไป (มี schema อยู่แล้ว — เพิ่ม/แก้ไข column)
+
+```bash
+# วิธีที่ 1: ใช้ Railway CLI (แนะนำ)
+railway run --service api pnpm --filter @fairgo/api prisma migrate deploy
+
+# วิธีที่ 2: รันจาก local แต่ชี้ DATABASE_URL ไปที่ production
+DATABASE_URL="postgres://..." pnpm --filter @fairgo/api prisma migrate deploy
+```
+
+#### Migration ล่าสุดที่ต้องรัน (2026-04-05)
+
+```bash
+# เพิ่ม column otpRef ใน otp_codes table
+# migration file: apps/api/prisma/migrations/20260405000001_add_otp_ref/migration.sql
+pnpm --filter @fairgo/api prisma migrate deploy
+```
+
+หรือถ้าใช้ `db:push` (ง่ายกว่า — ไม่ต้องมี migration files):
+
+```bash
+pnpm --filter @fairgo/api run db:push
+```
+
+> **Note**: `db:push` จะ sync schema ตาม `schema.prisma` โดยตรง เหมาะสำหรับ MVP/staging. Production ที่มีข้อมูลจริงควรใช้ `migrate deploy` แทน เพราะ track ประวัติได้
+
+#### ตรวจสอบ OTP ใน Database
+
+หลัง user ขอ OTP ระบบจะบันทึกลง `otp_codes`:
+
+```sql
+SELECT phone, code, "otpRef", "expiresAt" FROM otp_codes ORDER BY "createdAt" DESC LIMIT 10;
+```
+
+Response ที่ client ได้รับ:
+```json
+{ "phone": "0812345678", "otpRef": "REF-A3F7K2" }
+```
+
+นำ `otpRef` ไป query หา `code` ใน DB แล้วใช้ยืนยันได้เลย
 
 ---
 

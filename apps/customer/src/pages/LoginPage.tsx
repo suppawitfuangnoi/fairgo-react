@@ -7,6 +7,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [showOTP, setShowOTP] = useState(false);
   const [otp, setOtp] = useState('');
+  const [otpRef, setOtpRef] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
@@ -46,10 +47,11 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await apiFetch('/auth/request-otp', {
+      const res = await apiFetch<{ otpRef: string }>('/auth/request-otp', {
         method: 'POST',
         body: { phone: phoneDigits },
       });
+      setOtpRef(res.otpRef || '');
       setShowOTP(true);
       setCountdown(60);
     } catch (err) {
@@ -148,6 +150,13 @@ export default function LoginPage() {
           </>
         ) : (
           <>
+            {otpRef && (
+              <div className="w-full mb-4 p-3 bg-primary/10 border border-primary/30 rounded-xl text-center">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">รหัสอ้างอิง OTP</p>
+                <p className="text-sm font-mono font-bold text-primary tracking-widest">{otpRef}</p>
+              </div>
+            )}
+
             <div className="w-full mb-6">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 กรอก OTP (6 หลัก)

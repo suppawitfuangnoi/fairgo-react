@@ -28,6 +28,10 @@ export default function TripSummaryPage() {
   const navigate = useNavigate();
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
 
   useEffect(() => {
     const fetchTrip = async () => {
@@ -178,20 +182,50 @@ export default function TripSummaryPage() {
               </div>
             </div>
 
-            {/* Rating Stars */}
-            {!trip.isRated && (
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => navigate(`/rating/${trip.id}`)}
-                    className="text-slate-300 dark:text-slate-600 hover:text-amber-400 hover:scale-110 transition-transform"
-                  >
-                    <span className="material-icons-round text-xl">star</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {/* Favorite Driver Button */}
+              <button
+                onClick={async () => {
+                  if (favLoading || !trip.driverId) return;
+                  setFavLoading(true);
+                  try {
+                    const res = await apiFetch<{ action: string }>('/users/favorites', {
+                      method: 'POST',
+                      body: { driverProfileId: trip.driverId },
+                    });
+                    setIsFavorite(res.action === 'added');
+                  } catch {
+                    // ignore
+                  } finally {
+                    setFavLoading(false);
+                  }
+                }}
+                disabled={favLoading}
+                className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
+                  isFavorite
+                    ? 'bg-red-50 border-red-200 text-red-500'
+                    : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-red-400'
+                }`}
+                title={isFavorite ? 'เอาออกจากรายการโปรด' : 'เพิ่มในรายการโปรด'}
+              >
+                <span className="material-icons-round text-lg">{isFavorite ? 'favorite' : 'favorite_border'}</span>
+              </button>
+
+              {/* Rating Stars */}
+              {!trip.isRated && (
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => navigate(`/rating/${trip.id}`)}
+                      className="text-slate-300 dark:text-slate-600 hover:text-amber-400 hover:scale-110 transition-transform"
+                    >
+                      <span className="material-icons-round text-xl">star</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -269,6 +303,39 @@ export default function TripSummaryPage() {
       {/* Fixed Bottom CTA */}
       <div className="absolute bottom-0 left-0 w-full bg-card-light dark:bg-card-dark border-t border-slate-100 dark:border-slate-800 p-6 z-20 pb-8">
         <div className="space-y-3">
+          {/* Confirm Payment Button */}
+          {paymentConfirmed ? (
+            <div className="w-full bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl py-4 flex items-center justify-center gap-2">
+              <span className="material-icons-round text-emerald-500 text-xl">check_circle</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">ยืนยันการชำระเงินแล้ว</span>
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                if (paymentLoading) return;
+                setPaymentLoading(true);
+                try {
+                  await apiFetch('/payments', {
+                    method: 'POST',
+                    body: { tripId: trip.id, method: 'CASH' },
+                  }).catch(() => {});
+                  setPaymentConfirmed(true);
+                } finally {
+                  setPaymentLoading(false);
+                }
+              }}
+              disabled={paymentLoading}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2"
+            >
+              {paymentLoading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <span className="material-icons-round text-xl">payments</span>
+              )}
+              <span>{paymentLoading ? 'กำลังดำเนินการ...' : 'ยืนยันการชำระเงิน (เงินสด)'}</span>
+            </button>
+          )}
+
           {!trip.isRated && (
             <button
               onClick={() => navigate(`/rating/${trip.id}`)}

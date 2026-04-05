@@ -161,6 +161,7 @@ model CustomerProfile {
   id            String   @id @default(cuid())
   userId        String   @unique
   savedPlaces   Json?    // { home: {lat, lng, address}, work: {lat, lng, address}, ... }
+  favoriteDriverIds String[] @default([]) // driverProfile IDs the customer has starred
   defaultPaymentMethod PaymentMethod @default(CASH)
   totalTrips    Int      @default(0)
   averageRating Float    @default(0)
@@ -593,6 +594,7 @@ model OtpCode {
   id        String   @id @default(cuid())
   phone     String
   code      String
+  otpRef    String   // Human-readable reference e.g. "REF-A3F7K2" shown to user for lookup
   expiresAt DateTime
   createdAt DateTime @default(now())
 

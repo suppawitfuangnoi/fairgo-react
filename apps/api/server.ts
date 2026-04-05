@@ -44,11 +44,12 @@ async function main() {
   const io = new SocketIOServer(httpServer, {
     cors: {
       origin: [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3002",
-        process.env.ADMIN_WEB_URL || "http://localhost:3000",
-        process.env.CUSTOMER_APP_URL || "*",
+        "http://localhost:5173", // admin (Vite default)
+        "http://localhost:5174", // customer
+        "http://localhost:5175", // driver
+        process.env.ADMIN_WEB_URL || "http://localhost:5173",
+        process.env.CUSTOMER_APP_URL || "http://localhost:5174",
+        process.env.DRIVER_APP_URL || "http://localhost:5175",
       ],
       methods: ["GET", "POST"],
       credentials: true,
@@ -201,6 +202,25 @@ async function main() {
           customerId: user.userId,
           timestamp: Date.now(),
         });
+      }
+    );
+
+    // ──────────────────────────────────────────────
+    // In-app Chat — relay messages within trip room
+    // ──────────────────────────────────────────────
+    socket.on(
+      "chat:message",
+      (data: { tripId: string; text: string; fromRole: string }) => {
+        if (!data.tripId || !data.text) return;
+        const payload = {
+          fromUserId: user.userId,
+          fromRole: data.fromRole || user.role,
+          text: data.text,
+          timestamp: new Date().toISOString(),
+        };
+        // Broadcast to everyone else in the trip room
+        socket.to(`trip:${data.tripId}`).emit("chat:message", payload);
+        console.log(`[Chat] trip:${data.tripId} from ${user.role}: ${data.text}`);
       }
     );
 

@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { label: 'Pricing', path: '/dashboard/pricing', icon: 'payments' },
     { label: 'Disputes', path: '/dashboard/disputes', icon: 'support_agent' },
     { label: 'Analytics', path: '/dashboard/analytics', icon: 'bar_chart' },
+    { label: 'Promos', path: '/dashboard/promos', icon: 'local_offer' },
   ];
 
   const isActive = (path: string) => location.pathname === path;

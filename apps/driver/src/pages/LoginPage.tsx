@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpRef, setOtpRef] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,10 +22,11 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      await apiFetch('/auth/request-otp', {
+      const res = await apiFetch<{ otpRef: string }>('/auth/request-otp', {
         method: 'POST',
         body: { phone: '+66' + phone.slice(-9) },
       });
+      setOtpRef(res.otpRef || '');
       setStep('otp');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to request OTP');
@@ -115,6 +117,12 @@ export default function LoginPage() {
               </div>
             ) : (
               <div>
+                {otpRef && (
+                  <div className="mb-3 p-3 bg-primary/10 border border-primary/30 rounded-xl text-center">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">OTP Reference</p>
+                    <p className="text-sm font-mono font-bold text-primary tracking-widest">{otpRef}</p>
+                  </div>
+                )}
                 <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
                   Verification Code
                 </label>
@@ -122,7 +130,7 @@ export default function LoginPage() {
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="0000"
+                  placeholder="000000"
                   maxLength="6"
                   className="w-full bg-background-light dark:bg-slate-800 px-4 py-3 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary text-center text-2xl tracking-widest"
                 />

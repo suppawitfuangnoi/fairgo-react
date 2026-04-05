@@ -23,6 +23,7 @@ export default function TripSummaryPage() {
   const navigate = useNavigate();
   const [trip, setTrip] = useState<TripSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [receiptConfirmed, setReceiptConfirmed] = useState(false);
 
   useEffect(() => {
     fetchTrip();
@@ -187,7 +188,23 @@ export default function TripSummaryPage() {
       </div>
 
       {/* Fixed Bottom CTA */}
-      <div className="absolute bottom-0 left-0 w-full bg-white border-t border-slate-100 p-6 z-20 pb-8">
+      <div className="absolute bottom-0 left-0 w-full bg-white border-t border-slate-100 p-6 z-20 pb-8 space-y-3">
+        {/* Confirm Cash Receipt Button */}
+        {receiptConfirmed ? (
+          <div className="w-full bg-emerald-50 border border-emerald-200 rounded-xl py-4 flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
+            <span className="text-emerald-600 font-bold">ยืนยันรับเงินแล้ว</span>
+          </div>
+        ) : (
+          <button
+            onClick={() => setReceiptConfirmed(true)}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-xl">payments</span>
+            <span>ยืนยันรับเงินแล้ว (เงินสด)</span>
+          </button>
+        )}
+
         <button
           onClick={handleGoHome}
           className="w-full bg-primary hover:bg-[#0ea5c6] text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 group"

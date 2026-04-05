@@ -22,6 +22,17 @@ export default function RideRequestPage() {
   const [loading, setLoading] = useState(false);
   const [loadingFare, setLoadingFare] = useState(false);
 
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discount: number;
+    finalFare: number;
+    description?: string | null;
+  } | null>(null);
+  const [promoError, setPromoError] = useState('');
+
   useEffect(() => {
     const fetchFareEstimate = async () => {
       if (!dropoffAddress) return;
@@ -71,6 +82,35 @@ export default function RideRequestPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleValidatePromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError('');
+    setAppliedPromo(null);
+    try {
+      const res = await apiFetch<{
+        code: string;
+        discount: number;
+        finalFare: number;
+        description?: string | null;
+      }>('/coupons/validate', {
+        method: 'POST',
+        body: { code: promoCode.trim().toUpperCase(), fare },
+      });
+      setAppliedPromo(res);
+    } catch (err) {
+      setPromoError(err instanceof Error ? err.message : 'โค้ดไม่ถูกต้อง');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoError('');
   };
 
   const isFairPrice =
@@ -270,6 +310,72 @@ export default function RideRequestPage() {
           </div>
         </div>
 
+          {/* Promo Code Section */}
+          <div className="mt-1 mb-2">
+            {appliedPromo ? (
+              // Applied coupon — show success chip
+              <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-icons-round text-emerald-500 text-base">local_offer</span>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 font-mono tracking-wider">
+                      {appliedPromo.code}
+                    </p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                      ลด ฿{appliedPromo.discount.toFixed(2)}{appliedPromo.description ? ` — ${appliedPromo.description}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleRemovePromo}
+                  className="p-1 hover:bg-emerald-100 dark:hover:bg-emerald-800/40 rounded-lg transition-colors"
+                >
+                  <span className="material-icons-round text-emerald-400 text-base">close</span>
+                </button>
+              </div>
+            ) : (
+              // Promo code input row
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons-round text-slate-400 text-base">
+                    local_offer
+                  </span>
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value.toUpperCase());
+                      setPromoError('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleValidatePromo()}
+                    placeholder="โค้ดส่วนลด"
+                    maxLength={20}
+                    className="w-full pl-9 pr-3 py-2.5 text-sm font-mono tracking-wider rounded-xl border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition placeholder:font-sans placeholder:tracking-normal"
+                  />
+                </div>
+                <button
+                  onClick={handleValidatePromo}
+                  disabled={!promoCode.trim() || promoLoading}
+                  className="px-4 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 disabled:opacity-40 text-primary font-bold text-sm transition-all flex items-center gap-1"
+                >
+                  {promoLoading ? (
+                    <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  ) : (
+                    'ใช้'
+                  )}
+                </button>
+              </div>
+            )}
+
+            {promoError && (
+              <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1 px-1">
+                <span className="material-icons-round text-xs">error</span>
+                {promoError}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Spacer */}
         <div className="flex-grow"></div>
       </div>
@@ -297,10 +403,21 @@ export default function RideRequestPage() {
             </div>
           </div>
           <div className="text-right">
-            <span className="text-xs text-slate-400 block">เวลาประมาณ</span>
-            <span className="text-sm font-bold text-slate-800 dark:text-white">
-              5-8 นาที
-            </span>
+            {appliedPromo ? (
+              <>
+                <span className="text-xs text-slate-400 line-through block">฿{fare}</span>
+                <span className="text-base font-bold text-emerald-500">
+                  ฿{appliedPromo.finalFare.toFixed(2)}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-slate-400 block">เวลาประมาณ</span>
+                <span className="text-sm font-bold text-slate-800 dark:text-white">
+                  5-8 นาที
+                </span>
+              </>
+            )}
           </div>
         </div>
 
