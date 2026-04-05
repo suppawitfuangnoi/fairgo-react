@@ -174,14 +174,16 @@ export default function AnalyticsPage() {
                   <div className="h-[280px] flex items-center justify-center text-slate-400">No vehicle data</div>
                 ) : (
                   <div className="flex items-center justify-center gap-12">
-                    <ResponsiveContainer width="50%" height={280}>
-                      <PieChart>
-                        <Pie data={vehicleData} cx="50%" cy="50%" outerRadius={100} dataKey="count" nameKey="type" label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}>
-                          {vehicleData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(v: number) => [v, 'Count']} />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <div style={{ width: 280, height: 280, flexShrink: 0 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={vehicleData} cx="50%" cy="50%" outerRadius={100} dataKey="count" nameKey="type" label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}>
+                            {vehicleData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                          </Pie>
+                          <Tooltip formatter={(v: number) => [v, 'Count']} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                     <div className="space-y-3">
                       {vehicleData.map((v, i) => (
                         <div key={v.type} className="flex items-center gap-3">
