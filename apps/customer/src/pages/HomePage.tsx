@@ -19,11 +19,36 @@ export default function HomePage() {
   const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Check for active trip on mount and redirect if found
+  useEffect(() => {
+    const checkActiveTrip = async () => {
+      try {
+        const active = await apiFetch<any>('/trips/active');
+        const trip = active?.data ?? active;
+        if (trip?.id) {
+          navigate(`/trip-active/${trip.id}`, { replace: true });
+          return;
+        }
+      } catch {
+        // No active trip — stay on home
+      }
+    };
+    checkActiveTrip();
+  }, []);
+
   useEffect(() => {
     const fetchTrips = async () => {
       try {
-        const data = await apiFetch<{ trips: Trip[] }>('/trips?limit=5');
-        setRecentTrips(data.trips || []);
+        const data = await apiFetch<any>('/trips?limit=5');
+        // Handle array or { trips: [] } envelope
+        const list = Array.isArray(data) ? data : (data?.trips || data?.data || []);
+        setRecentTrips(list.slice(0, 5).map((o: any) => ({
+          id: o.id,
+          route: (o.dropoffAddress || o.rideRequest?.dropoffAddress || 'ปลายทาง'),
+          fare: Number(o.lockedFare ?? o.offer?.fareAmount ?? o.fare ?? 0),
+          date: o.startedAt || o.createdAt || '',
+          driverName: o.driverProfile?.user?.name || o.driverName || '',
+        })));
       } catch (err) {
         console.error('Failed to fetch trips:', err);
       } finally {
@@ -194,7 +219,7 @@ export default function HomePage() {
                         {trip.route}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        ฿{trip.fare} • {trip.driverName}
+                        {trip.fare > 0 ? `฿${trip.fare.toFixed(0)}` : ''}{trip.driverName ? ` • ${trip.driverName}` : ''}
                       </p>
                     </button>
                   ))}
