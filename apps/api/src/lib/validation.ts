@@ -14,6 +14,7 @@ export const verifyOtpSchema = z.object({
     .regex(/^(\+66|0)\d{8,9}$/, "Invalid Thai phone number format"),
   code: z.string().length(6, "OTP must be 6 digits"),
   role: z.enum(["CUSTOMER", "DRIVER"]).optional().default("CUSTOMER"),
+  name: z.string().min(1).max(100).optional(),
 });
 
 export const refreshTokenSchema = z.object({

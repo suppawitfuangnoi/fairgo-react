@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const result = await validateBody(request, verifyOtpSchema);
     if ("error" in result) return result.error;
 
-    const { phone, code, role } = result.data;
+    const { phone, code, role, name } = result.data;
 
     // Verify OTP
     const isValid = await verifyOTP(phone, code);
@@ -21,16 +21,24 @@ export async function POST(request: NextRequest) {
 
     // Find or create user
     let user = await prisma.user.findUnique({ where: { phone } });
+    const isNewUser = !user;
 
     if (!user) {
       user = await prisma.user.create({
         data: {
           phone,
+          name: name || null,
           role: role === "DRIVER" ? "DRIVER" : "CUSTOMER",
           ...(role === "DRIVER"
             ? { driverProfile: { create: {} } }
             : { customerProfile: { create: {} } }),
         },
+      });
+    } else if (name && !user.name) {
+      // Save name for existing users who didn't have one yet
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { name },
       });
     }
 
@@ -49,17 +57,30 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Include verificationStatus for driver accounts
+    let verificationStatus: string | undefined;
+    if (role === "DRIVER") {
+      const driverProfile = await prisma.driverProfile.findUnique({
+        where: { userId: user.id },
+        select: { verificationStatus: true },
+      });
+      verificationStatus = driverProfile?.verificationStatus;
+    }
+
     return successResponse({
       user: {
         id: user.id,
         phone: user.phone,
         name: user.name,
+        email: user.email,
         role: user.role,
         status: user.status,
+        ...(verificationStatus !== undefined ? { verificationStatus } : {}),
       },
       accessToken,
       refreshToken,
       expiresIn: 86400, // 24 hours in seconds
+      isNewUser,
     }, "Login successful");
   } catch (error) {
     console.error("[AUTH] Verify OTP error:", error);

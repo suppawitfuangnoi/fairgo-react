@@ -14,6 +14,7 @@ export default function OnboardingProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [driverName, setDriverName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [vehicleType, setVehicleType] = useState<'TAXI' | 'MOTORCYCLE' | 'TUKTUK'>('TAXI');
   const [make, setMake] = useState('');
@@ -25,12 +26,29 @@ export default function OnboardingProfilePage() {
 
   const handleNextStep = async () => {
     if (step === 1) {
-      if (!email) {
-        setError('Please enter your email');
+      if (!driverName.trim()) {
+        setError('Please enter your full name');
         return;
       }
       setError('');
-      setStep(2);
+      setLoading(true);
+      try {
+        // Save name (and optional email) to the backend
+        await apiFetch('/users/me', {
+          method: 'PATCH',
+          body: {
+            name: driverName.trim(),
+            ...(email.trim() ? { email: email.trim() } : {}),
+          },
+        });
+        updateUser({ name: driverName.trim(), ...(email.trim() ? { email: email.trim() } : {}) });
+        setStep(2);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to save profile');
+      } finally {
+        setLoading(false);
+      }
+      return;
     } else if (step === 2) {
       if (!make || !model || !color || !plateNumber) {
         setError('Please fill in all vehicle fields');
@@ -52,7 +70,6 @@ export default function OnboardingProfilePage() {
           },
         });
 
-        updateUser({ email });
         setStep(3);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to save vehicle');
@@ -122,19 +139,20 @@ export default function OnboardingProfilePage() {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                  Name
+                  Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={user?.name || ''}
-                  disabled
-                  className="w-full bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-lg text-slate-900 dark:text-white opacity-50 cursor-not-allowed"
+                  value={driverName}
+                  onChange={(e) => { setDriverName(e.target.value); setError(''); }}
+                  placeholder="Somchai Jaidee"
+                  className="w-full bg-background-light dark:bg-slate-800 px-4 py-3 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                  Email
+                  Email <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
                   type="email"
@@ -143,6 +161,15 @@ export default function OnboardingProfilePage() {
                   placeholder="your@email.com"
                   className="w-full bg-background-light dark:bg-slate-800 px-4 py-3 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+              </div>
+
+              {/* Phone display */}
+              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <span className="material-symbols-outlined text-slate-400 text-sm">phone</span>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Phone (verified)</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{user?.phone}</p>
+                </div>
               </div>
             </div>
           )}

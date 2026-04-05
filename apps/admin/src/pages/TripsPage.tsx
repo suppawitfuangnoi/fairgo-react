@@ -101,7 +101,7 @@ export default function TripsPage() {
       {/* Header */}
       <div>
         <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-          Ongoing Trips
+          All Trips
         </h2>
       </div>
 

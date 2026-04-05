@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
     return successResponse({
       vehicleType,
       ...estimate,
+      // distance in metres for frontend consumption (estimatedDistance is in km)
+      distance: Math.round(roadDistanceKm * 1000),
       currency: "THB",
     });
   } catch (error) {
