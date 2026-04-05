@@ -387,7 +387,7 @@ export default function TripActivePage() {
       {!chatOpen && (
         <>
           {/* Top Status Header & SOS */}
-          <div className="absolute top-0 left-0 w-full z-[9998] pt-14 px-5 flex justify-between items-start pointer-events-none">
+          <div className="fixed top-0 left-0 w-full z-[9998] pt-14 px-5 flex justify-between items-start pointer-events-none">
             {/* Status Pill */}
             <div className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-soft rounded-xl p-3 pr-5 flex items-center gap-3 max-w-[75%] border border-slate-100 dark:border-slate-700">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -409,7 +409,7 @@ export default function TripActivePage() {
           </div>
 
           {/* Bottom Sheet (Driver Info & Controls) */}
-          <div className="absolute bottom-0 left-0 w-full z-[9999] isolate will-change-transform">
+          <div className="fixed bottom-0 left-0 w-full z-[9999]">
             {/* Floating Chat Bubble Indicator */}
             <div className="absolute -top-14 right-5 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
               Driver is nearby!

@@ -59,6 +59,7 @@ function mapTrip(o: any): ActiveTrip {
     fare:
       o.offer?.fareAmount ??
       o.acceptedOffer?.fareAmount ??
+      o.offers?.find((of: any) => of.status === 'ACCEPTED')?.fareAmount ??
       o.fare ??
       0,
     estimatedArrival:
@@ -292,7 +293,7 @@ export default function TripActivePage() {
       </div>
 
       {/* ── TOP STATUS BAR ── */}
-      <div className="absolute top-0 left-0 w-full z-[9998] pt-12 px-5 flex justify-between items-start pointer-events-none">
+      <div className="fixed top-0 left-0 w-full z-[9998] pt-12 px-5 flex justify-between items-start pointer-events-none">
         <div className="pointer-events-auto bg-white/95 backdrop-blur-md shadow-lg rounded-xl p-3 pr-5 flex items-center gap-3 max-w-[75%] border border-slate-100">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
             <span className="material-icons-round text-primary text-xl">near_me</span>
@@ -320,7 +321,7 @@ export default function TripActivePage() {
       </div>
 
       {/* ── BOTTOM SHEET ── */}
-      <div className="absolute bottom-0 left-0 w-full z-[9999] isolate will-change-transform">
+      <div className="fixed bottom-0 left-0 w-full z-[9999]">
         <div className="bg-white rounded-t-3xl shadow-2xl p-6 pb-8 border-t border-slate-100">
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
 
