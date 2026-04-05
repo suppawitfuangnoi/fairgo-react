@@ -38,8 +38,30 @@ export default function TripSummaryPage() {
     const fetchTrip = async () => {
       if (!id) return;
       try {
-        const response = await apiFetch<TripDetail>(`/trips/${id}`);
-        setTrip(response);
+        const response = await apiFetch<any>(`/trips/${id}`);
+        const raw = response?.data ?? response;
+        if (raw?.id) {
+          setTrip({
+            id: raw.id,
+            pickupAddress: raw.pickupAddress || '',
+            dropoffAddress: raw.dropoffAddress || '',
+            distance: raw.estimatedDistance ? Number(raw.estimatedDistance) : (raw.distance ?? 0),
+            duration: raw.estimatedDuration ?? raw.duration ?? 0,
+            fare: raw.offer?.fareAmount ?? raw.fare ?? 0,
+            startTime: raw.startTime || raw.createdAt || '',
+            endTime: raw.endTime || raw.completedAt || '',
+            driverName: raw.driverProfile?.user?.name || raw.driver?.name || raw.driverName || 'คนขับ',
+            driverId: raw.driverProfile?.id || raw.driverId || '',
+            vehiclePlate: raw.driverProfile?.vehicles?.[0]?.plateNumber || raw.vehiclePlate || '',
+            paymentMethod: raw.paymentMethod || 'เงินสด',
+            fareBreakdown: {
+              baseFare: raw.offer?.fareAmount ?? raw.fare ?? 0,
+              fairPriceDeal: raw.fareBreakdown?.fairPriceDeal,
+              promo: raw.fareBreakdown?.promo,
+            },
+            isRated: raw.isRated ?? false,
+          });
+        }
       } catch (err) {
         console.error('Failed to fetch trip:', err);
       } finally {

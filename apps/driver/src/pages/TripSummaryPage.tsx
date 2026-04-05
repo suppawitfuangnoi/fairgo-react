@@ -33,8 +33,20 @@ export default function TripSummaryPage() {
   async function fetchTrip() {
     setLoading(true);
     try {
-      const res = await apiFetch<{ data: TripSummary }>(`/api/v1/trips/${id}`);
-      if (res.data) setTrip(res.data);
+      const res = await apiFetch<any>(`/trips/${id}`);
+      const tripData = res?.data ?? res;
+      if (tripData?.id) setTrip({
+        ...tripData,
+        customer: tripData.customer || {
+          name: tripData.customerProfile?.user?.name || 'ผู้โดยสาร',
+          avatarUrl: tripData.customerProfile?.user?.avatarUrl,
+          rating: tripData.customerProfile?.rating,
+        },
+        fare: tripData.offer?.fareAmount ?? tripData.fare ?? 0,
+        baseFare: tripData.offer?.fareAmount ?? tripData.fare ?? 0,
+        distance: tripData.estimatedDistance ? Number(tripData.estimatedDistance) : (tripData.distance ?? 0),
+        duration: tripData.estimatedDuration ?? tripData.duration,
+      });
     } catch {
       // Minimal fallback
     } finally {

@@ -58,6 +58,36 @@ interface Trip {
   duration: string;
 }
 
+function mapTrip(o: any): Trip {
+  return {
+    id: o.id,
+    status: o.status,
+    passengerName:
+      o.customerProfile?.user?.name ||
+      o.customer?.name ||
+      o.passengerName ||
+      'ผู้โดยสาร',
+    passengerPhone:
+      o.customerProfile?.user?.phone ||
+      o.customer?.phone ||
+      o.passengerPhone ||
+      '',
+    pickupAddress: o.pickupAddress || '',
+    dropoffAddress: o.dropoffAddress || '',
+    fare:
+      o.offer?.fareAmount ??
+      o.acceptedOffer?.fareAmount ??
+      o.fare ??
+      0,
+    distance: o.estimatedDistance
+      ? `${Number(o.estimatedDistance).toFixed(1)} km`
+      : o.distance || '',
+    duration: o.estimatedDuration
+      ? `${o.estimatedDuration} min`
+      : o.duration || '',
+  };
+}
+
 const STATUS_PROGRESS: Record<TripStatus, number> = {
   DRIVER_ASSIGNED: 20,
   DRIVER_EN_ROUTE: 40,
@@ -121,10 +151,11 @@ export default function TripActivePage() {
   useEffect(() => {
     const fetchTrip = async () => {
       try {
-        const response = await apiFetch<Trip>('/trips/active');
+        const response = await apiFetch<any>('/trips/active');
         if (response) {
-          setTrip(response);
-          tripRef.current = response;
+          const mapped = mapTrip(response);
+          setTrip(mapped);
+          tripRef.current = mapped;
         }
         if (response?.status === 'COMPLETED') {
           navigate(`/trip-summary/${response.id}`, { replace: true });
@@ -204,6 +235,15 @@ export default function TripActivePage() {
     };
   }, [navigate, scrollChatToBottom]);
 
+  // These hooks MUST be before any early return to satisfy Rules of Hooks
+  useEffect(() => {
+    if (chatOpen) { setUnreadCount(0); scrollChatToBottom(); }
+  }, [chatOpen, scrollChatToBottom]);
+
+  useEffect(() => {
+    if (trip?.id) socketClient.joinRoom(`trip:${trip.id}`);
+  }, [trip?.id]);
+
   if (!trip) {
     return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
@@ -262,14 +302,6 @@ export default function TripActivePage() {
     scrollChatToBottom();
     socketClient.emit('chat:message', { tripId: trip.id, text, fromRole: 'DRIVER' });
   };
-
-  useEffect(() => {
-    if (chatOpen) { setUnreadCount(0); scrollChatToBottom(); }
-  }, [chatOpen, scrollChatToBottom]);
-
-  useEffect(() => {
-    if (trip?.id) socketClient.joinRoom(`trip:${trip.id}`);
-  }, [trip?.id]);
 
   return (
     <>
@@ -355,7 +387,7 @@ export default function TripActivePage() {
       {!chatOpen && (
         <>
           {/* Top Status Header & SOS */}
-          <div className="absolute top-0 left-0 w-full z-20 pt-14 px-5 flex justify-between items-start pointer-events-none">
+          <div className="absolute top-0 left-0 w-full z-[9998] pt-14 px-5 flex justify-between items-start pointer-events-none">
             {/* Status Pill */}
             <div className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-soft rounded-xl p-3 pr-5 flex items-center gap-3 max-w-[75%] border border-slate-100 dark:border-slate-700">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -377,7 +409,7 @@ export default function TripActivePage() {
           </div>
 
           {/* Bottom Sheet (Driver Info & Controls) */}
-          <div className="absolute bottom-0 left-0 w-full z-30">
+          <div className="absolute bottom-0 left-0 w-full z-[9999] isolate will-change-transform">
             {/* Floating Chat Bubble Indicator */}
             <div className="absolute -top-14 right-5 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
               Driver is nearby!

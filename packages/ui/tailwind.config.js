@@ -18,6 +18,8 @@ module.exports = {
         'background-dark': '#101f22',
         'surface-light': '#ffffff',
         'surface-dark': '#1a2f33',
+        'card-light': '#ffffff',
+        'card-dark': '#1a2f33',
         success: '#22c55e',
         warning: '#f59e0b',
         danger: '#ef4444',
