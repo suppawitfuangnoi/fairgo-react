@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || 'https://fairgo-react-production.up.railway.app/api/v1';
+const BASE = import.meta.env.VITE_API_URL || 'https://fairgo-api.vercel.app/api/v1';
 
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;

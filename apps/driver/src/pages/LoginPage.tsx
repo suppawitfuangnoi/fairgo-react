@@ -57,6 +57,15 @@ export default function LoginPage() {
         },
       });
       const { user, accessToken, refreshToken } = (response as any).data ?? response;
+
+      // Guard: reject accounts that are not DRIVER role
+      if (user.role && user.role !== 'DRIVER') {
+        setError(
+          'เบอร์โทรนี้ลงทะเบียนเป็น Customer อยู่แล้ว\nกรุณาใช้เบอร์โทรอื่นสำหรับบัญชีคนขับ'
+        );
+        return;
+      }
+
       setAuth(user, accessToken, refreshToken);
 
       if (user.verificationStatus === 'PENDING' || !user.verificationStatus) {
