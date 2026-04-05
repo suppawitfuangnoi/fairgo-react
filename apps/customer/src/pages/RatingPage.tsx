@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 const FEEDBACK_TAGS = [
   'ราคาแฟร์',
@@ -118,10 +119,8 @@ export default function RatingPage() {
         <div className="flex flex-col items-center text-center mb-8">
           <div className="relative mb-4">
             <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-blue-400">
-              <div className="w-full h-full object-cover rounded-full border-4 border-white dark:border-[#15262a] bg-primary/20 flex items-center justify-center">
-                <span className="material-icons-round text-4xl text-primary">
-                  person
-                </span>
+              <div className="w-full h-full overflow-hidden rounded-full border-4 border-white dark:border-[#15262a]">
+                <img src={IMG.driverRating} className="w-full h-full object-cover rounded-full" alt="driver" />
               </div>
             </div>
             <div className="absolute bottom-0 right-0 bg-white dark:bg-[#15262a] rounded-full p-1.5 shadow-md">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 interface FareEstimate {
   fareMin: number;
@@ -122,14 +123,8 @@ export default function RideRequestPage() {
     <div className="w-full max-w-md h-screen bg-white dark:bg-slate-900 shadow-2xl relative flex flex-col overflow-hidden font-display">
       {/* Top Header & Map Area */}
       <div className="relative h-[35%] w-full bg-slate-100">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-80"
-          style={{
-            backgroundImage: `url('data:image/svg+xml,%3Csvg width="400" height="200" xmlns="http://www.w3.org/2000/svg"%3E%3Crect fill="%23e5e7eb" width="400" height="200"/%3E%3C/svg%3E')`,
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-white dark:to-slate-900"></div>
-        </div>
+        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover opacity-80" alt="map" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-white dark:to-slate-900"></div>
 
         {/* Header Controls */}
         <div className="absolute top-0 left-0 right-0 p-4 pt-12 flex justify-between items-center z-10 text-white">

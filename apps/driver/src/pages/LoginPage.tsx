@@ -85,8 +85,8 @@ export default function LoginPage() {
 
         <div className="flex-1 overflow-y-auto px-6 py-12 flex flex-col justify-center">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="material-symbols-outlined text-white text-3xl">phone</span>
+            <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6">
+              <svg className="w-full h-full" fill="none" height="100" viewBox="0 0 100 100" width="100" xmlns="http://www.w3.org/2000/svg"><path d="M25 80V25C25 19.4772 29.4772 15 35 15H75C80.5228 15 85 19.4772 85 25V30C85 35.5228 80.5228 40 75 40H45V45H65C70.5228 45 75 49.4472 75 55V60C75 65.5228 70.5228 70 65 70H45V80C45 85.5228 40.5228 90 35 90H35C29.4772 90 25 85.5228 25 80Z" fill="#13c8ec"/><path d="M45 27.5H65" stroke="white" strokeLinecap="round" strokeWidth="4"/><path d="M45 57.5H55" stroke="white" strokeLinecap="round" strokeWidth="4"/></svg>
             </div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
               {step === 'phone' ? 'Your Phone' : 'Enter OTP'}

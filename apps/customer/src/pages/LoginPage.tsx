@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+import { IMG } from '@/lib/assets';
 
 export default function LoginPage() {
   const [phone, setPhone] = useState('');
@@ -103,11 +104,31 @@ export default function LoginPage() {
       <div className="flex flex-col items-center justify-center flex-1 w-full">
         {/* Logo */}
         <div className="mb-8">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <span className="material-icons-round text-4xl text-primary">
-              local_taxi
-            </span>
-          </div>
+          <svg
+            className="relative drop-shadow-lg"
+            fill="none"
+            height="64"
+            viewBox="0 0 100 100"
+            width="64"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M25 80V25C25 19.4772 29.4772 15 35 15H75C80.5228 15 85 19.4772 85 25V30C85 35.5228 80.5228 40 75 40H45V45H65C70.5228 45 75 49.4772 75 55V60C75 65.5228 70.5228 70 65 70H45V80C45 85.5228 40.5228 90 35 90H35C29.4772 90 25 85.5228 25 80Z"
+              fill="#13c8ec"
+            ></path>
+            <path
+              d="M45 27.5H65"
+              stroke="white"
+              strokeLinecap="round"
+              strokeWidth="4"
+            ></path>
+            <path
+              d="M45 57.5H55"
+              stroke="white"
+              strokeLinecap="round"
+              strokeWidth="4"
+            ></path>
+          </svg>
         </div>
 
         {/* Title */}

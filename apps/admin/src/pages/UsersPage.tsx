@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
+import { avatarUrl } from '@/lib/assets';
 
 interface User {
   id: string;
@@ -256,13 +257,7 @@ export default function UsersPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`size-9 rounded-full flex items-center justify-center font-bold text-sm ${
-                          user.status === 'PENDING_VERIFICATION'
-                            ? 'bg-primary text-white'
-                            : 'bg-primary/20 text-primary'
-                        }`}>
-                          {getInitials(user.name)}
-                        </div>
+                        <img src={avatarUrl(user.name)} className="size-9 rounded-full object-cover" alt={user.name} />
                         <div>
                           <p className="text-sm font-bold text-slate-900 dark:text-white">
                             {user.name}

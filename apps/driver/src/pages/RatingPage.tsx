@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 interface TripForRating {
   id: string;
@@ -124,8 +125,8 @@ export default function RatingPage() {
                       className="w-full h-full object-cover rounded-full border-4 border-white dark:border-[#15262a]"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-full border-4 border-white dark:border-[#15262a] bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                      <span className="material-icons-round text-slate-400 dark:text-slate-300 text-3xl">person</span>
+                    <div className="w-full h-full rounded-full border-4 border-white dark:border-[#15262a] overflow-hidden">
+                      <img src={IMG.passengerFemale} className="w-full h-full object-cover rounded-full" alt="passenger" />
                     </div>
                   )}
                 </div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
+import { IMG } from '@/lib/assets';
 
 interface ActiveTrip {
   id: string;
@@ -201,14 +202,8 @@ export default function TripActivePage() {
     <div className="w-full max-w-md mx-auto h-screen bg-slate-100 overflow-hidden relative flex flex-col font-display shadow-2xl">
 
       {/* ── MAP ── */}
-      <div
-        className="absolute inset-0 z-0 w-full h-full"
-        style={{
-          backgroundColor: '#e5e7eb',
-          backgroundImage: `linear-gradient(#d1d5db 2px, transparent 2px), linear-gradient(90deg, #d1d5db 2px, transparent 2px)`,
-          backgroundSize: '40px 40px',
-        }}
-      >
+      <div className="absolute inset-0 z-0 w-full h-full">
+        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover" alt="map" />
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {/* Route path */}
           <path
@@ -285,8 +280,8 @@ export default function TripActivePage() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center border-4 border-slate-50 shadow-sm">
-                  <span className="material-icons-round text-primary text-2xl">person</span>
+                <div className="w-14 h-14 rounded-full border-4 border-slate-50 shadow-sm overflow-hidden">
+                  <img src={IMG.driverSomsak} className="w-full h-full object-cover rounded-full" alt="driver" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 bg-white p-0.5 rounded-full shadow-sm">
                   <div className="flex items-center gap-0.5 bg-yellow-50 px-1.5 py-0.5 rounded-full border border-yellow-100">

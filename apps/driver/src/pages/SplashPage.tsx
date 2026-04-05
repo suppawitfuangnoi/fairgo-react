@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
+import { IMG } from '@/lib/assets';
 
 const styles = `
   @keyframes pulse-logo {

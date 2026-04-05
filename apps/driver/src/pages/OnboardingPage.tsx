@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { IMG } from '@/lib/assets';
 
 interface Slide {
   icon: string;
@@ -85,12 +86,10 @@ export default function OnboardingPage() {
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col items-center justify-center px-8 pt-10 pb-24 relative z-10">
             {/* Illustration Container */}
-            <div className="relative w-full aspect-square mb-10 flex items-center justify-center">
+            <div className="relative w-full aspect-square mb-10 flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-primary/5 rounded-full blur-3xl scale-90 animate-pulse"></div>
               <div className="relative w-full h-full animate-float">
-                <div className="flex items-center justify-center h-full">
-                  <span className="material-icons-round text-7xl text-primary">{slide.icon}</span>
-                </div>
+                <img src={IMG.onboardingIllustration} className="w-full h-full object-cover" alt="onboarding" />
               </div>
             </div>
 

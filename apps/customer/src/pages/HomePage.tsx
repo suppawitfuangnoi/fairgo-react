@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 interface Trip {
   id: string;
@@ -33,14 +34,8 @@ export default function HomePage() {
   return (
     <div className="w-full max-w-md mx-auto h-screen bg-background-light dark:bg-background-dark overflow-hidden relative flex flex-col font-display">
       {/* Map Background */}
-      <div className="absolute inset-0 z-0 w-full h-full bg-[#eef4f6] dark:bg-[#1f2937]">
-        <div className="relative w-full h-full opacity-60">
-          <div className="absolute top-[-10%] left-[30%] w-[40px] h-[120%] bg-white dark:bg-gray-700 transform rotate-12 border-l-4 border-r-4 border-gray-100 dark:border-gray-600"></div>
-          <div className="absolute top-[40%] left-[-10%] w-[120%] h-[35px] bg-white dark:bg-gray-700 transform -rotate-6 border-t-4 border-b-4 border-gray-100 dark:border-gray-600"></div>
-          <div className="absolute top-[10%] right-[10%] w-[150px] h-[200px] bg-primary/5 rounded-xl"></div>
-          <div className="absolute bottom-[30%] right-[20%] w-[80px] h-[80px] bg-gray-100 dark:bg-gray-700 rounded-md"></div>
-          <div className="absolute top-[20%] left-[10%] w-[100px] h-[120px] bg-gray-100 dark:bg-gray-700 rounded-md"></div>
-        </div>
+      <div className="absolute inset-0 z-0 w-full h-full">
+        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover" alt="map" />
 
         {/* User Current Location Pin */}
         <div className="absolute top-[48%] left-[48%] z-20">
@@ -74,10 +69,8 @@ export default function HomePage() {
                 </span>
               </button>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm">
-              <div className="w-full h-full bg-primary/20 flex items-center justify-center">
-                <span className="material-icons-round text-primary">person</span>
-              </div>
+            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm">
+              <img src={IMG.userAvatar} className="w-full h-full object-cover rounded-full" alt="avatar" />
             </div>
           </div>
         </div>

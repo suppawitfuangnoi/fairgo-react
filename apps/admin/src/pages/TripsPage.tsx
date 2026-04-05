@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 interface Trip {
   id: string;
@@ -179,9 +180,7 @@ export default function TripsPage() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-sm text-slate-600 dark:text-slate-300">
-                    {trip.driver.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                  </div>
+                  <img src={[IMG.tripDriver1, IMG.tripDriver2, IMG.tripDriver3, IMG.tripDriver4][trips.indexOf(trip) % 4]} className="size-8 rounded-full object-cover" alt={trip.driver.name} />
                   <div>
                     <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">
                       Driver
@@ -196,9 +195,7 @@ export default function TripsPage() {
                     </p>
                     <p className="text-xs font-bold">{trip.user.name}</p>
                   </div>
-                  <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-sm text-slate-600 dark:text-slate-300">
-                    {trip.user.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                  </div>
+                  <img src={[IMG.tripUser1, IMG.tripUser2, IMG.tripUser3, IMG.tripUser4][trips.indexOf(trip) % 4]} className="size-8 rounded-full object-cover" alt={trip.user.name} />
                 </div>
               </div>
             </div>

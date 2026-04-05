@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+import { IMG, avatarUrl } from '@/lib/assets';
 
 interface UserProfile {
   id: string;
@@ -87,10 +88,8 @@ export default function ProfilePage() {
       {/* Header with Avatar */}
       <div className="bg-gradient-to-b from-primary/20 to-transparent pt-8 pb-6 px-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border-4 border-white dark:border-background-dark shadow-lg">
-            <span className="material-icons-round text-4xl text-primary">
-              person
-            </span>
+          <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white dark:border-background-dark shadow-lg">
+            <img src={user.avatar ? user.avatar : IMG.userProfile} className="w-full h-full object-cover rounded-full" alt="profile" />
           </div>
 
           <div className="flex-1">

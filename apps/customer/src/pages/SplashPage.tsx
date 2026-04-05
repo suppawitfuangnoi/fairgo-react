@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { IMG } from '@/lib/assets';
 
 export default function SplashPage() {
   const navigate = useNavigate();

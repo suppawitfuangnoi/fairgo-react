@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
+import { avatarUrl } from '@/lib/assets';
 
 interface Driver {
   id: string;
@@ -199,13 +200,7 @@ export default function DriversPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`size-9 rounded-full flex items-center justify-center font-bold text-sm ${
-                          driver.status === 'PENDING'
-                            ? 'bg-primary text-white'
-                            : 'bg-primary/20 text-primary'
-                        }`}>
-                          {getInitials(driver.name)}
-                        </div>
+                        <img src={avatarUrl(driver.name)} className="size-9 rounded-full object-cover" alt={driver.name} />
                         <div>
                           <p className="text-sm font-bold text-slate-900 dark:text-white">
                             {driver.name}

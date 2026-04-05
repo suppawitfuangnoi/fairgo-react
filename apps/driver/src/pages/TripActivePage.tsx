@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
+import { IMG } from '@/lib/assets';
 
 const styles = `
   .map-bg {
@@ -235,7 +236,9 @@ export default function TripActivePage() {
     <div className="min-h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden">
       {/* Interactive Map Layer (Background) */}
       {!chatOpen && (
-        <div className="absolute inset-0 z-0 map-bg w-full h-full" />
+        <div className="absolute inset-0 z-0 map-bg w-full h-full">
+          <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover z-0" alt="map" />
+        </div>
       )}
 
       {/* Chat Panel Overlay */}
@@ -337,8 +340,8 @@ export default function TripActivePage() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 border-4 border-slate-50 dark:border-slate-700 shadow-sm object-cover">
-                      {trip.passengerName[0]}
+                    <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 border-4 border-slate-50 dark:border-slate-700 shadow-sm">
+                      <img src={IMG.passengerMale} className="w-full h-full object-cover rounded-full" alt="passenger" />
                     </div>
                     <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 p-1 rounded-full">
                       <div className="flex items-center gap-0.5 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-full border border-yellow-100 dark:border-yellow-700">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { socketClient } from '@/lib/socket';
 import { toast } from '@/lib/toast';
+import { IMG } from '@/lib/assets';
 
 interface DashboardData {
   totalUsers: number;

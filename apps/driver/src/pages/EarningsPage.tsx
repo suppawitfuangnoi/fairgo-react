@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { apiFetch } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
+import { IMG } from '@/lib/assets';
 
 const styles = `
   .hide-scrollbar::-webkit-scrollbar {
@@ -124,13 +125,11 @@ export default function EarningsPage() {
         <header className="mb-8">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm">
                 {user?.avatar ? (
                   <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-primary/20 flex items-center justify-center">
-                    <span className="material-icons-round text-primary text-lg">person</span>
-                  </div>
+                  <img src={IMG.driverEarnings} className="w-full h-full object-cover rounded-full" alt="driver" />
                 )}
               </div>
               <div>

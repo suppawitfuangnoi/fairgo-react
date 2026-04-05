@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
+import { IMG } from '@/lib/assets';
 
 // Add styles for custom scrollbar
 const styles = `
@@ -163,9 +164,7 @@ export default function HomePage() {
             {user?.avatar ? (
               <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <span className="material-icons-round text-slate-600 dark:text-slate-300 w-full h-full flex items-center justify-center">
-                person
-              </span>
+              <img src={IMG.driverProfile} className="w-full h-full object-cover rounded-full" alt="driver" />
             )}
             {isOnline && <div className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full border-2 border-white dark:border-background-dark"></div>}
           </button>
@@ -229,8 +228,8 @@ export default function HomePage() {
                 <div className="p-5">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200">
-                        {ride.passengerName[0]}
+                      <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-slate-700 dark:text-slate-200">
+                        <img src={idx % 2 === 0 ? IMG.passengerFemale : IMG.passengerMale} className="w-full h-full object-cover rounded-full" alt="passenger" />
                       </div>
                       <div>
                         <h3 className="font-bold text-slate-900 dark:text-white text-lg">

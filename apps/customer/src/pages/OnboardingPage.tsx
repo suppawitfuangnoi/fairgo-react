@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { IMG } from '@/lib/assets';
 
 const slides = [
   {
@@ -54,20 +55,43 @@ export default function OnboardingPage() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col items-center justify-center px-8 pt-10 pb-24 relative z-10">
+        {/* FairGo Logo - Top */}
+        <div className="w-20 h-20 mb-4 flex items-center justify-center">
+          <svg
+            className="relative drop-shadow-lg"
+            fill="none"
+            height="100"
+            viewBox="0 0 100 100"
+            width="100"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M25 80V25C25 19.4772 29.4772 15 35 15H75C80.5228 15 85 19.4772 85 25V30C85 35.5228 80.5228 40 75 40H45V45H65C70.5228 45 75 49.4772 75 55V60C75 65.5228 70.5228 70 65 70H45V80C45 85.5228 40.5228 90 35 90H35C29.4772 90 25 85.5228 25 80Z"
+              fill="#13c8ec"
+            ></path>
+            <path
+              d="M45 27.5H65"
+              stroke="white"
+              strokeLinecap="round"
+              strokeWidth="4"
+            ></path>
+            <path
+              d="M45 57.5H55"
+              stroke="white"
+              strokeLinecap="round"
+              strokeWidth="4"
+            ></path>
+          </svg>
+        </div>
+
         {/* Illustration Container */}
         <div className="relative w-full aspect-square mb-10 flex items-center justify-center">
           {/* Abstract decorative background blob */}
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-primary/5 rounded-full blur-3xl scale-90 animate-pulse"></div>
 
-          {/* Main Illustration - using icon fallback instead of image */}
+          {/* Main Illustration - using real image */}
           <div className="relative w-full h-full animate-float flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
-                <span className="material-icons-round text-6xl text-primary">
-                  handshake
-                </span>
-              </div>
-            </div>
+            <img src={IMG.onboardingIllustration} className="w-full h-full object-cover rounded-3xl" alt="onboarding" />
           </div>
 
           {/* Floating Badge Element overlaid on image */}

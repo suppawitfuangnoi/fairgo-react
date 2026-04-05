@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
+import { IMG } from '@/lib/assets';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -46,9 +47,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       >
         {/* Logo Section */}
         <div className="p-6 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
-            <span className="material-symbols-outlined">local_taxi</span>
-          </div>
+          <svg fill="none" height="40" viewBox="0 0 100 100" width="40" xmlns="http://www.w3.org/2000/svg"><path d="M25 80V25C25 19.4772 29.4772 15 35 15H75C80.5228 15 85 19.4772 85 25V30C85 35.5228 80.5228 40 75 40H45V45H65C70.5228 45 75 49.4772 75 55V60C75 65.5228 70.5228 70 65 70H45V80C45 85.5228 40.5228 90 35 90H35C29.4772 90 25 85.5228 25 80Z" fill="#13c8ec"/><path d="M45 27.5H65" stroke="white" stroke-linecap="round" stroke-width="4"/><path d="M45 57.5H55" stroke="white" stroke-linecap="round" stroke-width="4"/></svg>
           <div>
             <h1 className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
               FAIRGO
@@ -80,9 +79,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         {/* User Section */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-400 flex items-center justify-center text-white font-bold text-sm">
-              {user?.name?.split(' ').map((n) => n[0]).join('')}
-            </div>
+            <img src={IMG.adminAvatar} className="w-10 h-10 rounded-full object-cover" alt="admin" />
             <div className="overflow-hidden flex-1">
               <p className="text-sm font-bold truncate text-slate-900 dark:text-white">
                 {user?.name || 'Admin'}

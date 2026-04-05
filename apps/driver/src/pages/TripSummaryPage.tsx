@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 interface TripSummary {
   id: string;
@@ -117,11 +118,11 @@ export default function TripSummaryPage() {
               {/* Customer Info */}
               <div className="px-6 pb-6 pt-2 flex items-center justify-between border-t border-slate-100 mt-2">
                 <div className="flex items-center gap-3 pt-4">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
                     {trip?.customer?.avatarUrl ? (
                       <img src={trip.customer.avatarUrl} alt="customer" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="material-symbols-outlined text-slate-400">person</span>
+                      <img src={IMG.passengerFemale} className="w-full h-full object-cover rounded-full" alt="passenger" />
                     )}
                   </div>
                   <div>

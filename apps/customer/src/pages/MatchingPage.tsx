@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
+import { IMG } from '@/lib/assets';
 
 interface DriverOffer {
   id: string;
@@ -129,18 +130,10 @@ export default function MatchingPage() {
     <div className="w-full max-w-md mx-auto h-screen bg-background-light dark:bg-background-dark overflow-hidden flex flex-col relative font-display">
 
       {/* ── Map Background ─────────────────────────────────────────────── */}
-      <div
-        className="absolute inset-0 z-0 w-full h-full"
-        style={{
-          backgroundColor: '#e5e7eb',
-          backgroundImage: `
-            linear-gradient(#d1d5db 2px, transparent 2px),
-            linear-gradient(90deg, #d1d5db 2px, transparent 2px)`,
-          backgroundSize: '40px 40px',
-        }}
-      >
+      <div className="absolute inset-0 z-0 w-full h-full">
+        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover" alt="map" />
         {/* Pulsing rings + user pin */}
-        <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+        <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-10">
           <div
             className="absolute w-64 h-64 bg-primary/20 rounded-full animate-ping"
             style={{ animationDuration: '2.5s' }}
@@ -152,8 +145,8 @@ export default function MatchingPage() {
 
           {/* User pin */}
           <div className="relative z-10 flex flex-col items-center">
-            <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-lg border-2 border-primary flex items-center justify-center">
-              <span className="material-icons-round text-primary text-3xl">person</span>
+            <div className="w-16 h-16 rounded-full shadow-lg border-2 border-primary flex items-center justify-center overflow-hidden">
+              <img src={IMG.userAvatar} className="w-full h-full object-cover rounded-full" alt="you" />
             </div>
             <div className="bg-white dark:bg-gray-800 px-3 py-1 rounded-full shadow-md mt-2 text-xs font-bold text-gray-800 dark:text-white border border-gray-100 dark:border-gray-700">
               {userFare ? `฿${userFare}` : '...'}
@@ -254,8 +247,8 @@ export default function MatchingPage() {
 
                   <div className="flex items-start gap-4 mb-3">
                     <div className="relative shrink-0">
-                      <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center border-2 border-white dark:border-gray-600 shadow-sm">
-                        <span className="material-icons-round text-primary text-2xl">person</span>
+                      <div className="w-14 h-14 rounded-full border-2 border-white dark:border-gray-600 shadow-sm overflow-hidden">
+                        <img src={[IMG.driverSomsak, IMG.driverSomchai, IMG.driverDavid, IMG.driverSarah][idx % 4]} className="w-full h-full object-cover rounded-full" alt={offer.driverName} />
                       </div>
                       <div className="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">
                         <div className="bg-green-500 w-3 h-3 rounded-full border-2 border-white dark:border-gray-700"></div>

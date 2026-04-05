@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 interface TripDetail {
   id: string;
@@ -167,8 +168,8 @@ export default function TripSummaryPage() {
         <div className="bg-card-light dark:bg-card-dark rounded-2xl shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm bg-primary/20 flex items-center justify-center">
-                <span className="material-icons-round text-primary">person</span>
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm">
+                <img src={IMG.driverTripSummary} className="w-full h-full object-cover rounded-full" alt="driver" />
               </div>
               <div>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">

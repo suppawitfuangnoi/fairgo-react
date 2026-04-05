@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import { IMG } from '@/lib/assets';
 
 const styles = `
   .bg-map-pattern {
@@ -134,7 +135,9 @@ export default function SubmitOfferPage() {
       <style>{styles}</style>
       <div className="min-h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden h-screen flex items-center justify-center">
         {/* Map Area */}
-        <div className="absolute inset-0 z-0 bg-map-pattern" />
+        <div className="absolute inset-0 z-0 bg-map-pattern">
+          <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover z-0" alt="map" />
+        </div>
 
         {/* Top Navigation / Cancel Area */}
         <div className="absolute top-0 left-0 right-0 z-20 pt-12 pb-4 px-6 flex justify-between items-start pointer-events-none">
@@ -186,8 +189,8 @@ export default function SubmitOfferPage() {
 
                 <div className="flex items-start gap-4">
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 border-2 border-white dark:border-gray-600 shadow-sm">
-                      {ride?.passengerName?.[0] || 'D'}
+                    <div className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 border-2 border-white dark:border-gray-600 shadow-sm">
+                      <img src={IMG.passengerFemale} className="w-full h-full object-cover rounded-full" alt="passenger" />
                     </div>
                     <div className="absolute -bottom-1 -right-1 bg-surface-light dark:bg-surface-dark rounded-full p-0.5 shadow-sm">
                       <div className="bg-green-500 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800"></div>

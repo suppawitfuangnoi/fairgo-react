@@ -1,0 +1,17 @@
+/** Centralised image assets extracted from AllScreen designs */
+export const IMG = {
+  onboardingIllustration: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBnL6jq9mkU_nOkIgHV4hDlW3mDKGGJu_CtiWUcoERiuGe_2-TKKe4bNQtqyjOitKnMQ5contGHyCPO9EH4qBBZrb6hlFfZSlQCuDYuAIC4o-BwztZAT8oI8AJtaEytPwNHtsYcc9K2PNhwzWiQWzaEPtMfCozvoDn5h4gVzsQiwgsloV9uUKDkZzkF1atjBcNIol7BxRAhIBRMjUNGScfV1xuPgkllGaRWDWVYvpC3fMFY2JJ7XsLopYc5bZjDUbRQ4bEyZaATBpyt',
+  mapBackground:          'https://lh3.googleusercontent.com/aida-public/AB6AXuDDoaQrZ0IeCx0JpRzxMSu9v7W0IaqXsGZwZwjmzszSCwEZJO_bowjwoD_NA3Qw9j2k5OYnYI9vZusH58374K0ZyFehATvUgUxt0Pv_uNJxMRm8Y5XyYiU__BcYpqPiAi9KObZvyHvJk5VOQt64dpPX2YHTfIg8f9Ftp1tM9bhwy01Jt_uvKN031xr_GaUSHi5V6RxgTEVjvnaNqguk52o0asrXwQJIhHNEPYTzzQYcsqTlmFt5fhOfk8uyXoLAVol89gE58RgsOnfw',
+  userAvatar:             'https://lh3.googleusercontent.com/aida-public/AB6AXuA-v5MQOfy_DfxrPg54HnaC1im1L6GuH5vc5kJo9JAiy0prkiy7o2LbpqNQEKHaPKg_C59iCZOa5hmBusE8zEpLrfaH1zCuEzEuotRdqfjFCeQOK_T_s_uv86eO46bWDrUTHWUC9-th4pm1tF2LV8GSYWh-LfXtLFND14vW6ZF7aJM1Y6i1iUK8FaTrCIncuDpxfrwQozcdv32ZZnCImPCfzs66ynBqQz3fj6hg8oefRUKyISYQjRw3NwbYASGpon7PwfXDlN7YO5A2',
+  driverProfile:          'https://lh3.googleusercontent.com/aida-public/AB6AXuAWHSCj1m7NyUGuAn5ZOMKyxkKXtT_-zW8fW6AwG_P9Jjw_7hFaVIhC-bv2rHXuH8Exs4193f4J1eQAbU0pMtVaV9iOI8p2qHQare8Vh7LoPsVi6XHqESuLVreywZhaLKOdVrd-EYv_ETiLaBslFWt59kDnPgJ2P8dAhD_tSi0UjNu5YonUesjqaIqiFjsCTWx5UOusW_FkwLy1pV7fzVoLJmQbsS65tbDbCmpOw-KhU_QyfCzbHsuBec6x80HpzqF7GpEaRYpb27p3',
+  driverEarnings:         'https://lh3.googleusercontent.com/aida-public/AB6AXuCjpQNOQ4lEIaDWgzQo3D_WQ9w7EPZSMjbZsNEL5CRBuq8Nbm3BqKOYo8TmeLOotQlKQT88fZrxUI_M9LqrtAQi54HLnsxGd0M3cn2sl8hlUHSTGEep73xLBWiBOK_LKlvYyMOn53VJWRdFnUXwnrTDoLzPCETYMJ5DuDcbts4Z4PQFP3IUPnxukRuOoYLdn6qgNtjfn7M6Blr01Ued5KvnXy72SZP4zncHJLBpydemybyzVThkSUZimqVG0rxl8lnU6TneV4X51vh7',
+  driverRating:           'https://lh3.googleusercontent.com/aida-public/AB6AXuDCdRZ3dYi8KTZoIo5NxD7qw1PA22PHOYAibAoZTBDfpB3284m_mOy03EqjsFygEH3t0oTyquaEE5x3jjQqYvUE4_CTByUi8DPVXS1U7Q6PTZOs_lx9Mtd0kuwNqmov0lIgYOLOZfCquvhk3l5FJJ2IgP_WD_XZDdC3p6jKI0tbg3RGVmUsRe59cl3fs8efWrGWhNzQ9ldqCDm0RZkjdSebqCTR-DwgCYt-YbGQqDoxa4LH2LmBFLcBqOiz_2O12gU_QY7IxCKoa2Iu',
+  passengerFemale:        'https://lh3.googleusercontent.com/aida-public/AB6AXuCUhYH-odoJolfAmyuz5hP-P0mBPmGLs57bJ0XCgyFe5rwAIMJ0N8ExtgNQjtEt4nS3oIRAz1nXUWw9B6klFJxUHcSqFqY6W8U4aneYk3c_LD85Pz1_u1KMmNf4Y9ex7Tc8DtOi7q3vLigGTZsuBCWRWBn0UJmiXz0CV-qjSo_htzyb1W8Uwe5XXVzIRYf4hQApO6hUWCM3izI6bpSaE_t0aKf-JE-p4Zz9dFv_aoFII0-huiWbYmo95g2im1c5c9EFlMRLYitT1aiB',
+  passengerMale:          'https://lh3.googleusercontent.com/aida-public/AB6AXuA6pclJkCaVNU3zW-5BcHJXtKR0sBpRcxcZSvtvyVHr_RPi-5OL509mvhOwFxbwYoL038kwp2rAtU6xgf-Sm-d8bv-Eqn-GglSUeWJRdE-w-6tUoBQbEILwYK8-dugCs0KWVTz-IpkXW9eJMEaLyea8DwIk6yecX_zhtibGHer4HR3YSOMEkwlZSp2KS72Q-ullyClvFh1afEvyytzulQA85CBgNobJrrnnpHhV-GHkrQpFFprYqw28RDzlBnhvOAcswqzTA-ifJnTH',
+  driverTripActive:       'https://lh3.googleusercontent.com/aida-public/AB6AXuDHa4CTcF8s6fB4BcOhXRMX5DTCQGHjjALFU9hxgYwwTxCmiWTXNR7Lu0YJx6BKRHwdE7RCCzj6jFKsnuwZ4EVfovAbT79kGjXDxeZfjC_8ZaZXFWws_sfSjNyZo5ZTO14IiA7Pqs7ulwhA7nWIGYnIUAzqdBLeYc-noTAYrMwoeNMW1Lc9F7zLckkORSuq7MKl7kNYBwdAEUkNrM2MgBORyO3t4m7qCLFqv7AIMKIaMpjpxz1D_F_hvLT7Yo33jSt56apcNqmV2zNS',
+};
+
+/** Generate avatar image from a name (used when no real photo is available) */
+export function avatarUrl(name: string, size = 256): string {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=13c8ec&color=fff&size=${size}&bold=true&format=png`;
+}
