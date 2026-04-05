@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
-import { socketClient, socketEvents } from '@fairgo/api-client';
+import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 
 interface ActiveTrip {
@@ -201,13 +201,15 @@ export default function TripActivePage() {
     <div className="w-full max-w-md mx-auto h-screen bg-slate-100 overflow-hidden relative flex flex-col">
 
       {/* ── MAP ── */}
-      <div className="absolute inset-0 z-0 w-full h-full bg-[#e8f4f8]">
+      <div
+        className="absolute inset-0 z-0 w-full h-full"
+        style={{
+          backgroundColor: '#e5e7eb',
+          backgroundImage: `linear-gradient(#d1d5db 2px, transparent 2px), linear-gradient(90deg, #d1d5db 2px, transparent 2px)`,
+          backgroundSize: '40px 40px',
+        }}
+      >
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {/* Road grid (decorative) */}
-          <line x1="0" y1="30" x2="100" y2="40" stroke="#d0e8f0" strokeWidth="1.5"/>
-          <line x1="0" y1="60" x2="100" y2="65" stroke="#d0e8f0" strokeWidth="1.5"/>
-          <line x1="20" y1="0" x2="25" y2="100" stroke="#d0e8f0" strokeWidth="1"/>
-          <line x1="60" y1="0" x2="55" y2="100" stroke="#d0e8f0" strokeWidth="1"/>
           {/* Route path */}
           <path
             d={`M ${carPos.x} ${carPos.y} Q 60 60 ${destPos.x} ${destPos.y}`}
@@ -215,7 +217,7 @@ export default function TripActivePage() {
             stroke="#13c8ec"
             strokeWidth="1.5"
             strokeDasharray="3 2"
-            opacity="0.7"
+            opacity="0.8"
           />
         </svg>
 
@@ -306,17 +308,20 @@ export default function TripActivePage() {
             </div>
           </div>
 
+          {/* Fair price lock notice */}
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-5 flex items-start gap-3">
+            <span className="material-icons-round text-primary text-lg mt-0.5">verified_user</span>
+            <div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">ล็อกราคาแล้ว สบายใจได้</p>
+              <p className="text-xs text-slate-500 mt-0.5">ราคาถูกล็อกแล้ว ไม่มีค่าใช้จ่ายเพิ่มเติม</p>
+            </div>
+          </div>
+
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <a
-              href={`tel:${trip.driverPhone}`}
-              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-slate-100 text-slate-900 font-semibold active:scale-95 transition-all"
-            >
-              <span className="material-icons-round text-xl">call</span>โทรไป
-            </a>
             <button
               onClick={() => setChatOpen(true)}
-              className="relative flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all"
+              className="relative flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold active:scale-95 transition-all"
             >
               <span className="material-icons-round text-xl">chat_bubble_outline</span>แชท
               {unreadCount > 0 && (
@@ -325,6 +330,12 @@ export default function TripActivePage() {
                 </span>
               )}
             </button>
+            <a
+              href={`tel:${trip.driverPhone}`}
+              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/30 active:scale-95 transition-all"
+            >
+              <span className="material-icons-round text-xl">call</span>โทรหาคนขับ
+            </a>
           </div>
 
           {trip.status === 'DRIVER_EN_ROUTE' && (

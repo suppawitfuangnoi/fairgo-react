@@ -6,7 +6,7 @@
     "dev": "next dev -p 4000",
     "dev:socket": "ts-node --project tsconfig.server.json server.ts",
     "build": "next build && tsc --project tsconfig.server.json",
-    "start": "next start -p 4000",
+    "start": "prisma migrate deploy --schema=./prisma/schema.prisma && next start -p 4000",
     "start:socket": "NODE_ENV=production node dist-server/server.js",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
