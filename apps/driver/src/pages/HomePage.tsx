@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { apiFetch } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
+import GoogleMap from '@/components/GoogleMap';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 import { IMG } from '@/lib/assets';
@@ -44,6 +46,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const { position } = useGeolocation();
 
   const [isOnline, setIsOnline] = useState(user?.isOnline || false);
   const [rides, setRides] = useState<RideRequest[]>([]);
@@ -72,7 +75,7 @@ export default function HomePage() {
     const fetchRides = async () => {
       try {
         const response = await apiFetch<{ data: { rides: RideRequest[]; totalTrips: number; totalEarnings: number } }>(
-          '/api/v1/rides/nearby?latitude=13.7563&longitude=100.5018&radius=10'
+          `/api/v1/rides/nearby?latitude=${position.lat}&longitude=${position.lng}&radius=10`
         );
         if (response.data) {
           setRides(response.data.rides || []);
@@ -144,8 +147,17 @@ export default function HomePage() {
   return (
     <>
       <style>{styles}</style>
-    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex flex-col pb-24">
-      <header className="sticky top-0 z-30 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-6 pt-12 pb-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex flex-col pb-24 relative">
+      {isOnline && (
+        <GoogleMap
+          center={position}
+          zoom={15}
+          markers={[{ lat: position.lat, lng: position.lng, color: 'green', pulse: true, label: 'ตำแหน่งของคุณ' }]}
+          className="absolute inset-0 w-full h-full z-0"
+          showTraffic={true}
+        />
+      )}
+      <header className="sticky top-0 z-40 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-6 pt-12 pb-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Job Requests</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
@@ -205,7 +217,7 @@ export default function HomePage() {
           </div>
         </main>
       ) : (
-        <main className="flex-1 px-4 pt-6 space-y-5 overflow-y-auto no-scrollbar">
+        <main className="flex-1 px-4 pt-6 space-y-5 overflow-y-auto no-scrollbar relative z-10">
           {rides.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="relative w-24 h-24 mb-6">

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import GoogleMap from '@/components/GoogleMap';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { IMG } from '@/lib/assets';
 
 const styles = `
@@ -50,6 +52,7 @@ export default function SubmitOfferPage() {
   const { rideId } = useParams<{ rideId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { position } = useGeolocation();
 
   const [ride, setRide] = useState<Ride | null>(location.state?.ride || null);
   const [fareAmount, setFareAmount] = useState(120);
@@ -135,8 +138,17 @@ export default function SubmitOfferPage() {
       <style>{styles}</style>
       <div className="min-h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden h-screen flex items-center justify-center">
         {/* Map Area */}
-        <div className="absolute inset-0 z-0 bg-map-pattern">
-          <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover z-0" alt="map" />
+        <div className="absolute inset-0 z-0">
+          <GoogleMap
+            center={position}
+            zoom={14}
+            markers={[
+              { lat: position.lat, lng: position.lng, color: 'green', pulse: true, label: 'คุณ' },
+              { lat: 13.7563, lng: 100.5018, color: 'blue', label: 'รับผู้โดยสาร' },
+              { lat: 13.7423, lng: 100.5231, color: 'red', label: 'ส่งผู้โดยสาร' },
+            ]}
+            className="absolute inset-0 w-full h-full"
+          />
         </div>
 
         {/* Top Navigation / Cancel Area */}

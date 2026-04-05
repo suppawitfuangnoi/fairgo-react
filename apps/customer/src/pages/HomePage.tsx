@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { IMG } from '@/lib/assets';
+import GoogleMap from '@/components/GoogleMap';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface Trip {
   id: string;
@@ -13,6 +15,7 @@ interface Trip {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { position } = useGeolocation();
   const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,17 +38,13 @@ export default function HomePage() {
     <div className="w-full max-w-md mx-auto h-screen bg-background-light dark:bg-background-dark overflow-hidden relative flex flex-col font-display">
       {/* Map Background */}
       <div className="absolute inset-0 z-0 w-full h-full">
-        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover" alt="map" />
-
-        {/* User Current Location Pin */}
-        <div className="absolute top-[48%] left-[48%] z-20">
-          <div className="relative">
-            <div className="w-6 h-6 bg-primary rounded-full border-4 border-white dark:border-gray-800 shadow-lg"></div>
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded-full whitespace-nowrap shadow-lg opacity-80">
-              You're here
-            </div>
-          </div>
-        </div>
+        <GoogleMap
+          center={position}
+          zoom={15}
+          markers={[{ lat: position.lat, lng: position.lng, color: 'blue', pulse: true, label: 'คุณอยู่ที่นี่' }]}
+          className="absolute inset-0 w-full h-full"
+          showTraffic={true}
+        />
       </div>
 
       {/* UI Overlay Layer */}

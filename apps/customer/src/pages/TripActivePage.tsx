@@ -4,6 +4,8 @@ import { apiFetch } from '@/lib/api';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 import { IMG } from '@/lib/assets';
+import GoogleMap from '@/components/GoogleMap';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface ActiveTrip {
   id: string;
@@ -40,6 +42,7 @@ function latLngToSvgPercent(lat: number, lng: number) {
 
 export default function TripActivePage() {
   const navigate = useNavigate();
+  const { position } = useGeolocation();
   const [trip, setTrip] = useState<ActiveTrip | null>(null);
   const [loading, setLoading] = useState(true);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
@@ -203,7 +206,15 @@ export default function TripActivePage() {
 
       {/* ── MAP ── */}
       <div className="absolute inset-0 z-0 w-full h-full">
-        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover" alt="map" />
+        <GoogleMap
+          center={driverLocation || position}
+          zoom={14}
+          markers={[
+            { lat: position.lat, lng: position.lng, color: 'blue', label: 'ตำแหน่งของฉัน' },
+            { lat: driverLocation?.lat || position.lat, lng: driverLocation?.lng || position.lng, color: 'red', label: 'คนขับ' },
+          ]}
+          className="absolute inset-0 w-full h-full"
+        />
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {/* Route path */}
           <path

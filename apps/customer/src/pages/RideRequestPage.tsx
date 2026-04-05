@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { IMG } from '@/lib/assets';
+import GoogleMap from '@/components/GoogleMap';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface FareEstimate {
   fareMin: number;
@@ -13,6 +15,7 @@ interface FareEstimate {
 
 export default function RideRequestPage() {
   const navigate = useNavigate();
+  const { position } = useGeolocation();
   const [vehicleType, setVehicleType] = useState<'TAXI' | 'MOTORCYCLE' | 'TUKTUK'>(
     'TAXI'
   );
@@ -123,7 +126,15 @@ export default function RideRequestPage() {
     <div className="w-full max-w-md h-screen bg-white dark:bg-slate-900 shadow-2xl relative flex flex-col overflow-hidden font-display">
       {/* Top Header & Map Area */}
       <div className="relative h-[35%] w-full bg-slate-100">
-        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover opacity-80" alt="map" />
+        <GoogleMap
+          center={position}
+          zoom={14}
+          markers={[
+            { lat: position.lat, lng: position.lng, color: 'blue', pulse: true },
+            { lat: 13.7423, lng: 100.5231, color: 'red', label: 'ปลายทาง' },
+          ]}
+          className="absolute inset-0 w-full h-full"
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-white dark:to-slate-900"></div>
 
         {/* Header Controls */}

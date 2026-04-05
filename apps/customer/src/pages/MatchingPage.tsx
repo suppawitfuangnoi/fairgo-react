@@ -4,6 +4,8 @@ import { apiFetch } from '@/lib/api';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 import { IMG } from '@/lib/assets';
+import GoogleMap from '@/components/GoogleMap';
+import { useGeolocation } from '@/hooks/useGeolocation';
 
 interface DriverOffer {
   id: string;
@@ -19,6 +21,7 @@ interface DriverOffer {
 
 export default function MatchingPage() {
   const navigate = useNavigate();
+  const { position } = useGeolocation();
   const [offers, setOffers] = useState<DriverOffer[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -131,7 +134,12 @@ export default function MatchingPage() {
 
       {/* ── Map Background ─────────────────────────────────────────────── */}
       <div className="absolute inset-0 z-0 w-full h-full">
-        <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover" alt="map" />
+        <GoogleMap
+          center={position}
+          zoom={15}
+          markers={[{ lat: position.lat, lng: position.lng, color: 'blue', pulse: true }]}
+          className="absolute inset-0 w-full h-full"
+        />
         {/* Pulsing rings + user pin */}
         <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center z-10">
           <div

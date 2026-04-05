@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
+import GoogleMap from '@/components/GoogleMap';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 import { IMG } from '@/lib/assets';
@@ -94,6 +96,7 @@ const NEXT_STATUS: Record<TripStatus, TripStatus> = {
 
 export default function TripActivePage() {
   const navigate = useNavigate();
+  const { position } = useGeolocation();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -236,8 +239,17 @@ export default function TripActivePage() {
     <div className="min-h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden">
       {/* Interactive Map Layer (Background) */}
       {!chatOpen && (
-        <div className="absolute inset-0 z-0 map-bg w-full h-full">
-          <img src={IMG.mapBackground} className="absolute inset-0 w-full h-full object-cover z-0" alt="map" />
+        <div className="absolute inset-0 z-0 w-full h-full">
+          <GoogleMap
+            center={position}
+            zoom={15}
+            markers={[
+              { lat: position.lat, lng: position.lng, color: 'green', pulse: true, label: 'ตำแหน่งของคุณ' },
+              { lat: 13.7563, lng: 100.5018, color: 'blue', label: 'ผู้โดยสาร' },
+            ]}
+            className="absolute inset-0 w-full h-full"
+            showTraffic={true}
+          />
         </div>
       )}
 
@@ -402,9 +414,7 @@ export default function TripActivePage() {
           </div>
         </>
       )}
-
-      )}
     </div>
-    </>
+  </>
   );
 }
