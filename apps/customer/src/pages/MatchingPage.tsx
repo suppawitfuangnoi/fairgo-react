@@ -29,8 +29,7 @@ export default function MatchingPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiFetch<{ data: { id: string; offers: DriverOffer[] } }>('/api/v1/rides/active');
-        const ride = res.data;
+        const ride = await apiFetch<{ id: string; offers: DriverOffer[] }>('/rides/active');
         if (ride?.id) {
           setRideId(ride.id);
           if (ride.offers?.length) setOffers(ride.offers);
@@ -70,9 +69,9 @@ export default function MatchingPage() {
     // Fallback polling every 8s (in case socket is unavailable)
     pollRef.current = setInterval(async () => {
       try {
-        const res = await apiFetch<{ data: { id: string; offers: DriverOffer[] } }>('/api/v1/rides/active');
-        if (res.data?.offers?.length) {
-          setOffers(res.data.offers);
+        const ride = await apiFetch<{ id: string; offers: DriverOffer[] }>('/rides/active');
+        if (ride?.offers?.length) {
+          setOffers(ride.offers);
         }
       } catch { /* ignore */ }
     }, 8000);
@@ -94,9 +93,9 @@ export default function MatchingPage() {
   async function handleAcceptOffer(offerId: string) {
     setLoading(true);
     try {
-      await apiFetch(`/api/v1/offers/${offerId}/respond`, {
+      await apiFetch(`/offers/${offerId}/respond`, {
         method: 'POST',
-        body: JSON.stringify({ action: 'ACCEPT' }),
+        body: { action: 'ACCEPT' },
       });
       navigate('/trip-active', { replace: true });
     } catch (err: any) {
@@ -107,9 +106,9 @@ export default function MatchingPage() {
 
   async function handleRejectOffer(offerId: string) {
     try {
-      await apiFetch(`/api/v1/offers/${offerId}/respond`, {
+      await apiFetch(`/offers/${offerId}/respond`, {
         method: 'POST',
-        body: JSON.stringify({ action: 'REJECT' }),
+        body: { action: 'REJECT' },
       });
       setOffers(prev => prev.filter(o => o.id !== offerId));
     } catch { /* ignore */ }
@@ -118,7 +117,7 @@ export default function MatchingPage() {
   async function handleCancelRide() {
     try {
       if (rideId) {
-        await apiFetch(`/api/v1/rides/${rideId}`, { method: 'DELETE' });
+        await apiFetch(`/rides/${rideId}`, { method: 'DELETE' });
       }
       navigate('/home', { replace: true });
     } catch {

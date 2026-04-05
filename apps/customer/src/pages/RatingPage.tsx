@@ -33,7 +33,7 @@ export default function RatingPage() {
     const fetchTrip = async () => {
       if (!tripId) return;
       try {
-        const response = await apiFetch(`/trips/${tripId}`);
+        const response = await apiFetch<TripForRating>(`/trips/${tripId}`);
         setTrip(response);
       } catch (err) {
         console.error('Failed to fetch trip:', err);

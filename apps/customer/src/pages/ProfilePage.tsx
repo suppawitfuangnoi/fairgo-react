@@ -24,7 +24,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await apiFetch('/users/me');
+        const response = await apiFetch<UserProfile>('/users/me');
         setUser(response);
         setNewName(response.name);
       } catch (err) {

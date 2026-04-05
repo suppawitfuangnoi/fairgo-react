@@ -37,7 +37,7 @@ export default function TripSummaryPage() {
     const fetchTrip = async () => {
       if (!id) return;
       try {
-        const response = await apiFetch(`/trips/${id}`);
+        const response = await apiFetch<TripDetail>(`/trips/${id}`);
         setTrip(response);
       } catch (err) {
         console.error('Failed to fetch trip:', err);

@@ -38,7 +38,7 @@ export default function RideRequestPage() {
       if (!dropoffAddress) return;
       setLoadingFare(true);
       try {
-        const response = await apiFetch('/rides/fare-estimate', {
+        const response = await apiFetch<FareEstimate>('/rides/fare-estimate', {
           method: 'POST',
           body: {
             pickupLat: 13.7563,

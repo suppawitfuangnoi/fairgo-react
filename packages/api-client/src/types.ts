@@ -155,10 +155,6 @@ export interface PricingRule {
   isActive: boolean;
 }
 
-export interface ApiError {
-  error: string;
-  statusCode?: number;
-}
 
 export interface PaginatedResponse<T> {
   data: T[];

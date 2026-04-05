@@ -18,7 +18,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchTrips = async () => {
       try {
-        const data = await apiFetch('/trips?limit=5');
+        const data = await apiFetch<{ trips: Trip[] }>('/trips?limit=5');
         setRecentTrips(data.trips || []);
       } catch (err) {
         console.error('Failed to fetch trips:', err);

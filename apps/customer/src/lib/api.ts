@@ -13,7 +13,8 @@ export async function apiFetch<T>(
     },
     body: opt.body ? JSON.stringify(opt.body) : undefined,
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
-  return data;
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.message || json.error || `HTTP ${res.status}`);
+  // Auto-unwrap standard API envelope { success, data, message }
+  return (json.data !== undefined ? json.data : json) as T;
 }

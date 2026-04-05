@@ -25,7 +25,7 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchTrips = async () => {
       try {
-        const response = await apiFetch(
+        const response = await apiFetch<{ trips: HistoryTrip[]; hasMore: boolean }>(
           `/trips?status=COMPLETED&limit=20&page=${page}`
         );
         if (page === 1) {
