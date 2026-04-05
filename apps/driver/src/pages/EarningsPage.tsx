@@ -61,11 +61,19 @@ export default function EarningsPage() {
     setLoading(true);
     try {
       const [walletRes, tripsRes] = await Promise.all([
-        apiFetch<{ data: WalletData }>('/api/v1/wallet'),
-        apiFetch<{ data: Trip[] }>('/api/v1/trips?status=COMPLETED&limit=10'),
+        apiFetch<{ wallet: { balance: number; currency: string }; transactions: Trip[] }>('/wallet'),
+        apiFetch<Trip[]>('/trips?status=COMPLETED&limit=10'),
       ]);
-      if (walletRes.data) setWallet(walletRes.data);
-      if (tripsRes.data) setTrips(tripsRes.data);
+      if (walletRes?.wallet) {
+        setWallet({
+          balance: walletRes.wallet.balance,
+          totalEarnings: walletRes.wallet.balance,
+          totalTrips: Array.isArray(walletRes.transactions) ? walletRes.transactions.length : 0,
+          onlineHours: 0,
+        });
+        if (Array.isArray(walletRes.transactions)) setTrips(walletRes.transactions);
+      }
+      if (Array.isArray(tripsRes)) setTrips(tripsRes);
     } catch {
       // Use mock data if API unavailable
       setWallet({ balance: 845.50, totalEarnings: 2340.00, totalTrips: 42, onlineHours: 38.5 });
@@ -79,7 +87,7 @@ export default function EarningsPage() {
     if (!amount || amount <= 0) return;
     setWithdrawing(true);
     try {
-      await apiFetch('/api/v1/wallet/withdraw', {
+      await apiFetch('/wallet/withdraw', {
         method: 'POST',
         body: JSON.stringify({ amount }),
       });

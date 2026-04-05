@@ -9,6 +9,20 @@ interface DashboardData {
   activeDrivers: number;
   totalTripsToday: number;
   revenueToday: number;
+  // actual API shape
+  stats?: {
+    totalUsers: number;
+    totalDrivers: number;
+    activeDrivers: number;
+    pendingVerifications: number;
+    totalTrips: number;
+    activeTrips: number;
+    completedTrips: number;
+    cancelledTrips: number;
+    recentUsers: number;
+    totalRevenue: number;
+  };
+  dailyTrips?: Array<{ day: string; date: string; trips: number }>;
 }
 
 interface Trip {
@@ -36,8 +50,7 @@ export default function DashboardPage() {
     
     const handleTripUpdate = (data: any) => {
       // Silently refetch data on update
-      apiFetch<DashboardData>('/admin/dashboard').then(setStats).catch(console.error);
-      apiFetch<{ trips: Trip[] }>('/admin/trips?limit=10').then(res => setTrips(res.trips || [])).catch(console.error);
+      fetchData();
       if (data?.status === 'COMPLETED') toast.success('Trip completed');
       else if (data?.type === 'new_request') toast.info('New ride request incoming');
     };
@@ -59,10 +72,24 @@ export default function DashboardPage() {
       setLoading(true);
       const [dashboardRes, tripsRes] = await Promise.all([
         apiFetch<DashboardData>('/admin/dashboard'),
-        apiFetch<{ trips: Trip[] }>('/admin/trips?limit=10'),
+        apiFetch<Trip[] | { trips: Trip[] }>('/admin/trips?limit=10'),
       ]);
-      setStats(dashboardRes);
-      setTrips(tripsRes.trips || []);
+      // API returns { stats: {...}, dailyTrips: [] } — normalize it
+      if (dashboardRes?.stats) {
+        const s = dashboardRes.stats;
+        setStats({
+          totalUsers: s.totalUsers,
+          activeDrivers: s.activeDrivers,
+          totalTripsToday: s.totalTrips,
+          revenueToday: s.totalRevenue,
+          stats: s,
+          dailyTrips: dashboardRes.dailyTrips,
+        });
+      } else {
+        setStats(dashboardRes);
+      }
+      const tripsData = Array.isArray(tripsRes) ? tripsRes : (tripsRes as any)?.trips || [];
+      setTrips(tripsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
