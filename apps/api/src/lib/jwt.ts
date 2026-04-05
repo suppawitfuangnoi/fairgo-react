@@ -14,7 +14,7 @@ export function generateAccessToken(userId: string, role: string): string {
   return jwt.sign(
     { userId, role, type: "access" } satisfies JwtPayload,
     JWT_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: "24h" }
   );
 }
 

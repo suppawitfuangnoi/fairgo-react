@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     return successResponse({
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
-      expiresIn: 900,
+      expiresIn: 86400,
     });
   } catch (error) {
     console.error("[AUTH] Refresh token error:", error);

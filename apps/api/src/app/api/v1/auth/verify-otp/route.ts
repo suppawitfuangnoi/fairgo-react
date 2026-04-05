@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       },
       accessToken,
       refreshToken,
-      expiresIn: 900, // 15 minutes in seconds
+      expiresIn: 86400, // 24 hours in seconds
     }, "Login successful");
   } catch (error) {
     console.error("[AUTH] Verify OTP error:", error);

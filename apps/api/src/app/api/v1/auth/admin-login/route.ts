@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       },
       accessToken,
       refreshToken,
-      expiresIn: 900,
+      expiresIn: 86400,
     });
   } catch (error) {
     console.error("[AUTH] Admin login error:", error);
