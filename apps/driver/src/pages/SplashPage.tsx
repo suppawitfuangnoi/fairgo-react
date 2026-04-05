@@ -23,18 +23,24 @@ const styles = `
 export default function SplashPage() {
   const navigate = useNavigate();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isLoggedIn) {
-        navigate('/home', { replace: true });
+        // If driver hasn't completed onboarding, send them there first
+        if (!user?.verificationStatus || user.verificationStatus === 'PENDING') {
+          navigate('/onboarding/profile', { replace: true });
+        } else {
+          navigate('/home', { replace: true });
+        }
       } else {
         navigate('/login', { replace: true });
       }
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, user, navigate]);
 
   return (
     <>

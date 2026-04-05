@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth.store';
 import SplashPage from '@/pages/SplashPage';
 import LoginPage from '@/pages/LoginPage';
 import OnboardingPage from '@/pages/OnboardingPage';
+import OnboardingProfilePage from '@/pages/OnboardingProfilePage';
 import HomePage from '@/pages/HomePage';
 import SubmitOfferPage from '@/pages/SubmitOfferPage';
 import TripActivePage from '@/pages/TripActivePage';
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/" element={<SplashPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/onboarding/profile" element={<OnboardingProfilePage />} />
 
         {/* Protected Routes */}
         <Route
