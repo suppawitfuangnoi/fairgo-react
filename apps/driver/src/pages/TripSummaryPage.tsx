@@ -47,8 +47,11 @@ export default function TripSummaryPage() {
         },
         fare: tripData.lockedFare ?? tripData.offer?.fareAmount ?? tripData.fare ?? 0,
         baseFare: tripData.lockedFare ?? tripData.offer?.fareAmount ?? tripData.fare ?? 0,
-        distance: tripData.estimatedDistance ? Number(tripData.estimatedDistance) : (tripData.distance ?? 0),
-        duration: tripData.estimatedDuration ?? tripData.duration,
+        distance: tripData.actualDistance ? Number(tripData.actualDistance) : tripData.estimatedDistance ? Number(tripData.estimatedDistance) : (tripData.distance ?? 0),
+        duration: tripData.actualDuration ?? tripData.estimatedDuration ?? tripData.duration,
+        paymentMethod: tripData.rideRequest?.customerProfile?.defaultPaymentMethod === 'CASH' ? 'เงินสด' : (tripData.paymentMethod || 'เงินสด'),
+        pickupTime: tripData.startedAt || tripData.createdAt,
+        dropoffTime: tripData.completedAt,
       });
     } catch {
       // Minimal fallback
@@ -104,7 +107,7 @@ export default function TripSummaryPage() {
               <div className="bg-primary/5 p-6 text-center border-b border-dashed border-primary/20">
                 <p className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-1">You Earned</p>
                 <h2 className="text-4xl font-bold text-primary">
-                  ${(trip?.fare ?? 0).toFixed(2)}
+                  ฿{(trip?.fare ?? 0).toFixed(2)}
                 </h2>
               </div>
 
@@ -167,7 +170,7 @@ export default function TripSummaryPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-500">Base Fare</span>
-                  <span className="text-slate-900 font-medium">${(trip?.baseFare ?? trip?.fare ?? 0).toFixed(2)}</span>
+                  <span className="text-slate-900 font-medium">฿{(trip?.baseFare ?? trip?.fare ?? 0).toFixed(2)}</span>
                 </div>
                 {trip?.fairPriceDeal != null && trip.fairPriceDeal > 0 && (
                   <div className="flex justify-between items-center text-sm">
@@ -175,13 +178,13 @@ export default function TripSummaryPage() {
                       <span className="material-symbols-outlined text-sm">handshake</span>
                       Fair Price Deal
                     </span>
-                    <span className="text-primary font-bold">-${trip.fairPriceDeal.toFixed(2)}</span>
+                    <span className="text-primary font-bold">-฿{trip.fairPriceDeal.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="h-px bg-slate-100 my-1"></div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-900 font-bold">Total Earned</span>
-                  <span className="text-primary font-bold text-lg">${(trip?.fare ?? 0).toFixed(2)}</span>
+                  <span className="text-primary font-bold text-lg">฿{(trip?.fare ?? 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-xs text-slate-400">Payment</span>

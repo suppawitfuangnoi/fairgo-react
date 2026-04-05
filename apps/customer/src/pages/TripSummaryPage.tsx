@@ -72,6 +72,16 @@ export default function TripSummaryPage() {
     fetchTrip();
   }, [id]);
 
+  function formatDateTime(dateStr?: string) {
+    if (!dateStr) return '—';
+    try {
+      return new Date(dateStr).toLocaleString('th-TH', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    } catch { return '—'; }
+  }
+
   if (loading) {
     return (
       <div className="w-full max-w-md mx-auto h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
@@ -134,7 +144,7 @@ export default function TripSummaryPage() {
                 <div className="absolute -left-[39px] top-1 w-5 h-5 rounded-full border-4 border-card-light dark:border-card-dark bg-slate-300 dark:bg-slate-600"></div>
                 <div>
                   <p className="text-xs text-slate-400 font-semibold mb-0.5">
-                    {trip.startTime}
+                    {formatDateTime(trip.startTime)}
                   </p>
                   <p className="text-slate-900 dark:text-white font-medium">
                     {trip.pickupAddress}
@@ -147,7 +157,7 @@ export default function TripSummaryPage() {
                 <div className="absolute -left-[39px] top-1 w-5 h-5 rounded-full border-4 border-card-light dark:border-card-dark bg-primary"></div>
                 <div>
                   <p className="text-xs text-slate-400 font-semibold mb-0.5">
-                    {trip.endTime}
+                    {formatDateTime(trip.endTime)}
                   </p>
                   <p className="text-slate-900 dark:text-white font-medium">
                     {trip.dropoffAddress}
