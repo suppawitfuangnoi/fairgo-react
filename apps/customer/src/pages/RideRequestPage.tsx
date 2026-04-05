@@ -45,10 +45,10 @@ export default function RideRequestPage() {
         const response = await apiFetch<FareEstimate>('/rides/fare-estimate', {
           method: 'POST',
           body: {
-            pickupLat: 13.7563,
-            pickupLng: 100.5018,
-            dropoffLat: 13.7423,
-            dropoffLng: 100.5231,
+            pickupLatitude: position?.lat ?? 13.7563,
+            pickupLongitude: position?.lng ?? 100.5018,
+            dropoffLatitude: 13.7423,
+            dropoffLongitude: 100.5231,
             vehicleType,
           },
         });
@@ -67,17 +67,21 @@ export default function RideRequestPage() {
   const handleRequestRide = async () => {
     setLoading(true);
     try {
-      const response = await apiFetch('/rides', {
+      const fareMin = fareEstimate?.fareMin ?? Math.max(35, fare - 30);
+      const fareMax = fareEstimate?.fareMax ?? fare + 50;
+      await apiFetch('/rides', {
         method: 'POST',
         body: {
-          pickupLat: 13.7563,
-          pickupLng: 100.5018,
+          pickupLatitude: position?.lat ?? 13.7563,
+          pickupLongitude: position?.lng ?? 100.5018,
           pickupAddress,
-          dropoffLat: 13.7423,
-          dropoffLng: 100.5231,
+          dropoffLatitude: 13.7423,
+          dropoffLongitude: 100.5231,
           dropoffAddress,
           vehicleType,
-          offerFare: fare,
+          fareOffer: fare,
+          fareMin,
+          fareMax,
         },
       });
       navigate('/matching', { replace: true });

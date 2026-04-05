@@ -66,7 +66,7 @@ export default function SubmitOfferPage() {
     if (!ride && rideId) {
       const fetchRide = async () => {
         try {
-          const response = await apiFetch<any>(`/ride-requests/${rideId}`);
+          const response = await apiFetch<any>(`/rides/${rideId}`);
           setRide(response);
         } catch (err) {
           setError('Failed to load ride details');
