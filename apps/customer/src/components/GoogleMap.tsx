@@ -22,6 +22,8 @@ interface GoogleMapProps {
   className?: string;
   onMapReady?: (map: any) => void;
   showTraffic?: boolean;
+  /** When set, draws a Directions route between origin and destination */
+  route?: { origin: { lat: number; lng: number }; destination: { lat: number; lng: number } };
 }
 
 export default function GoogleMap({
@@ -31,22 +33,20 @@ export default function GoogleMap({
   className = '',
   onMapReady,
   showTraffic = false,
+  route,
 }: GoogleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const directionsRendererRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
 
   // Poll for Google Maps API availability
   useEffect(() => {
     let attempts = 0;
     const tryInit = () => {
-      if (window.google?.maps) {
-        setReady(true);
-        return;
-      }
-      attempts++;
-      if (attempts < 50) setTimeout(tryInit, 200);
+      if (window.google?.maps) { setReady(true); return; }
+      if (++attempts < 50) setTimeout(tryInit, 200);
     };
     tryInit();
   }, []);
@@ -67,41 +67,76 @@ export default function GoogleMap({
       disableDefaultUI: true,
       styles: mapStyles,
       gestureHandling: 'cooperative',
-      language: 'th',
     });
 
     if (showTraffic) {
-      const trafficLayer = new window.google.maps.TrafficLayer();
-      trafficLayer.setMap(map);
+      new window.google.maps.TrafficLayer().setMap(map);
     }
+
+    // Set up DirectionsRenderer (hidden default markers — we use our own)
+    const renderer = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: {
+        strokeColor: '#13c8ec',
+        strokeOpacity: 0.85,
+        strokeWeight: 5,
+      },
+    });
+    renderer.setMap(map);
+    directionsRendererRef.current = renderer;
 
     mapInstanceRef.current = map;
     if (onMapReady) onMapReady(map);
-  }, [ready, center, zoom, showTraffic, onMapReady]);
+  }, [ready]);
 
-  // Update center when position changes
+  // Update center
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     mapInstanceRef.current.setCenter(center);
   }, [center.lat, center.lng]);
 
+  // Draw / clear route
+  useEffect(() => {
+    if (!mapInstanceRef.current || !directionsRendererRef.current) return;
+
+    if (!route) {
+      directionsRendererRef.current.setDirections({ routes: [] });
+      return;
+    }
+
+    const service = new window.google.maps.DirectionsService();
+    service.route(
+      {
+        origin: route.origin,
+        destination: route.destination,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+        region: 'TH',
+      },
+      (result: any, status: string) => {
+        if (status === 'OK') {
+          directionsRendererRef.current.setDirections(result);
+          // Auto-fit bounds to the route
+          mapInstanceRef.current.fitBounds(result.routes[0].bounds, 60);
+        }
+      }
+    );
+  }, [route?.origin.lat, route?.origin.lng, route?.destination.lat, route?.destination.lng]);
+
   // Update markers
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-
-    // Clear existing markers
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    markers.forEach((marker) => {
-      const colorMap: Record<string, string> = {
-        blue: '#13c8ec',
-        red: '#ef4444',
-        green: '#22c55e',
-        orange: '#f97316',
-      };
-      const color = colorMap[marker.color || 'blue'];
+    const colorMap: Record<string, string> = {
+      blue: '#13c8ec',
+      red: '#ef4444',
+      green: '#22c55e',
+      orange: '#f97316',
+    };
 
+    markers.forEach((marker) => {
+      const color = colorMap[marker.color || 'blue'];
       const m = new window.google.maps.Marker({
         position: { lat: marker.lat, lng: marker.lng },
         map: mapInstanceRef.current,
@@ -114,6 +149,7 @@ export default function GoogleMap({
           strokeWeight: 3,
           scale: marker.pulse ? 10 : 8,
         },
+        zIndex: 10,
       });
       markersRef.current.push(m);
     });
