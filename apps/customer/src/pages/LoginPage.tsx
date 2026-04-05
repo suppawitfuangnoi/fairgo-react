@@ -78,9 +78,10 @@ export default function LoginPage() {
         body: { phone: phoneDigits, code: otp, role: 'CUSTOMER' },
       });
 
-      localStorage.setItem('fg_access_token', response.accessToken);
-      localStorage.setItem('fg_refresh_token', response.refreshToken);
-      localStorage.setItem('fg_user', JSON.stringify(response.user));
+      const { user, accessToken, refreshToken } = (response as any).data ?? response;
+      localStorage.setItem('fg_access_token', accessToken);
+      localStorage.setItem('fg_refresh_token', refreshToken);
+      localStorage.setItem('fg_user', JSON.stringify(user));
 
       setLoggedIn(true);
       navigate('/home', { replace: true });

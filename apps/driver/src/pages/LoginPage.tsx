@@ -56,9 +56,10 @@ export default function LoginPage() {
           role: 'DRIVER',
         },
       });
-      setAuth(response.user, response.accessToken, response.refreshToken);
+      const { user, accessToken, refreshToken } = (response as any).data ?? response;
+      setAuth(user, accessToken, refreshToken);
 
-      if (response.user.verificationStatus === 'PENDING' || !response.user.verificationStatus) {
+      if (user.verificationStatus === 'PENDING' || !user.verificationStatus) {
         navigate('/onboarding/profile', { replace: true });
       } else {
         navigate('/home', { replace: true });

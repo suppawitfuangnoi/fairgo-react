@@ -18,23 +18,27 @@ export default function LoginPage() {
 
     try {
       const response = await apiFetch<{
-        user: { id: string; email: string; name: string; role: string };
-        token: string;
-        refreshToken?: string;
+        data: {
+          user: { id: string; email: string; name: string; role: string };
+          accessToken: string;
+          refreshToken: string;
+        };
       }>('/auth/admin-login', {
         method: 'POST',
         body: { email, password },
       });
 
+      const { user, accessToken, refreshToken } = response.data;
+
       setAuth(
         {
-          id: response.user.id,
-          email: response.user.email,
-          name: response.user.name,
-          role: response.user.role as 'admin' | 'super_admin',
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role as 'admin' | 'super_admin',
         },
-        response.token,
-        response.refreshToken
+        accessToken,
+        refreshToken
       );
 
       navigate('/dashboard');
