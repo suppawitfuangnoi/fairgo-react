@@ -20,7 +20,7 @@ export default function TripsPage() {
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'all' | 'active' | 'completed' | 'cancelled'>('all');
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetchTrips();

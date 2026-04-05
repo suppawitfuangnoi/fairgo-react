@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const setLoggedIn = useAuthStore((state) => state.setLoggedIn);
-  const countdownRef = useRef<NodeJS.Timeout>();
+  const countdownRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (countdown > 0) {

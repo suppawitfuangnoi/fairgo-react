@@ -22,8 +22,8 @@ export default function MatchingPage() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
   const [rideId, setRideId] = useState<string | null>(null);
-  const timerRef = useRef<NodeJS.Timeout>();
-  const pollRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const pollRef = useRef<ReturnType<typeof setTimeout>>();
 
   // ── Initial fetch to get active ride + existing offers ──────────────
   useEffect(() => {

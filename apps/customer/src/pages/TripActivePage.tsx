@@ -46,7 +46,7 @@ export default function TripActivePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-  const pollIntervalRef = useRef<NodeJS.Timeout>();
+  const pollIntervalRef = useRef<ReturnType<typeof setTimeout>>();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const tripIdRef = useRef<string | null>(null);
 

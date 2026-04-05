@@ -29,7 +29,7 @@ export default function HomePage() {
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [todayTrips, setTodayTrips] = useState(0);
   const [loading, setLoading] = useState(false);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Check if there's already an active trip on mount
