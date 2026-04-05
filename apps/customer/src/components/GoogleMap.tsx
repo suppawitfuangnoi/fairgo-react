@@ -28,6 +28,8 @@ interface GoogleMapProps {
   onMapClick?: (coords: { lat: number; lng: number }) => void;
   /** Called continuously as the map center changes (for map-picker mode) */
   onCenterChange?: (coords: { lat: number; lng: number }) => void;
+  /** Override gesture handling; defaults to 'cooperative'. Use 'greedy' for picker mode. */
+  gestureHandling?: 'cooperative' | 'greedy' | 'none' | 'auto';
 }
 
 export default function GoogleMap({
@@ -40,6 +42,7 @@ export default function GoogleMap({
   route,
   onMapClick,
   onCenterChange,
+  gestureHandling = 'cooperative',
 }: GoogleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -78,7 +81,7 @@ export default function GoogleMap({
       zoom,
       disableDefaultUI: true,
       styles: mapStyles,
-      gestureHandling: 'cooperative',
+      gestureHandling,
     });
 
     if (showTraffic) {

@@ -101,6 +101,7 @@ export default function MapLocationPicker({
           markers={[]}
           className="absolute inset-0 w-full h-full"
           onCenterChange={handleCenterChange}
+          gestureHandling="greedy"
         />
 
         {/* Centered pin (CSS-fixed, map moves underneath) */}
