@@ -24,6 +24,10 @@ interface GoogleMapProps {
   showTraffic?: boolean;
   /** When set, draws a Directions route between origin and destination */
   route?: { origin: { lat: number; lng: number }; destination: { lat: number; lng: number } };
+  /** Called when user clicks on the map (not on a marker) */
+  onMapClick?: (coords: { lat: number; lng: number }) => void;
+  /** Called continuously as the map center changes (for map-picker mode) */
+  onCenterChange?: (coords: { lat: number; lng: number }) => void;
 }
 
 export default function GoogleMap({
@@ -34,12 +38,20 @@ export default function GoogleMap({
   onMapReady,
   showTraffic = false,
   route,
+  onMapClick,
+  onCenterChange,
 }: GoogleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const directionsRendererRef = useRef<any>(null);
+  const onMapClickRef = useRef(onMapClick);
+  const onCenterChangeRef = useRef(onCenterChange);
   const [ready, setReady] = useState(false);
+
+  // Keep refs in sync with latest callbacks (avoids stale closure in map listener)
+  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
+  useEffect(() => { onCenterChangeRef.current = onCenterChange; }, [onCenterChange]);
 
   // Poll for Google Maps API availability
   useEffect(() => {
@@ -84,6 +96,21 @@ export default function GoogleMap({
     });
     renderer.setMap(map);
     directionsRendererRef.current = renderer;
+
+    // Map click listener
+    map.addListener('click', (e: any) => {
+      if (onMapClickRef.current) {
+        onMapClickRef.current({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+      }
+    });
+
+    // Center change listener (idle = after pan/zoom ends, smoother than center_changed)
+    map.addListener('idle', () => {
+      if (onCenterChangeRef.current) {
+        const c = map.getCenter();
+        onCenterChangeRef.current({ lat: c.lat(), lng: c.lng() });
+      }
+    });
 
     mapInstanceRef.current = map;
     if (onMapReady) onMapReady(map);
