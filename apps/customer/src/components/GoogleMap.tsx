@@ -89,11 +89,13 @@ export default function GoogleMap({
     if (onMapReady) onMapReady(map);
   }, [ready]);
 
-  // Update center
+  // Update center — skip when a route is active (fitBounds already controls the view)
+  const hasRoute = !!route;
   useEffect(() => {
     if (!mapInstanceRef.current) return;
+    if (hasRoute) return; // DirectionsRenderer.fitBounds handles positioning
     mapInstanceRef.current.setCenter(center);
-  }, [center.lat, center.lng]);
+  }, [center.lat, center.lng, hasRoute]);
 
   // Draw / clear route
   useEffect(() => {

@@ -191,8 +191,10 @@ export default function RideRequestPage() {
       ? { lat: (pickupCoords.lat + dropoffCoords.lat) / 2, lng: (pickupCoords.lng + dropoffCoords.lng) / 2 }
       : position;
 
+  // Use explicit pickupCoords (searched place) when available, fall back to GPS position
+  const pickupMarkerCoords = pickupCoords || position;
   const mapMarkers = [
-    { lat: position.lat, lng: position.lng, color: 'blue' as const, pulse: true, label: 'คุณ' },
+    { lat: pickupMarkerCoords.lat, lng: pickupMarkerCoords.lng, color: 'blue' as const, pulse: true, label: 'จุดรับ' },
     ...(dropoffCoords
       ? [{ lat: dropoffCoords.lat, lng: dropoffCoords.lng, color: 'red' as const, label: 'ปลายทาง' }]
       : []),
@@ -365,24 +367,38 @@ export default function RideRequestPage() {
                     )}
 
                     <p className="text-xs text-slate-400">
-                      แนะนำ:{' '}
-                      <span className="text-green-600 dark:text-green-400 font-bold">
-                        ฿{fareEstimate.fareMin} – ฿{fareEstimate.fareMax}
-                      </span>
-                      {fareEstimate.distance ? (
-                        <span className="ml-2 text-slate-400">· {(fareEstimate.distance / 1000).toFixed(1)} กม.</span>
-                      ) : null}
+                      {fareEstimate.distance > 0 ? (
+                        <span>ระยะทาง <span className="font-semibold text-slate-600 dark:text-slate-300">{(fareEstimate.distance / 1000).toFixed(1)} กม.</span></span>
+                      ) : (
+                        <span>ราคาแนะนำ <span className="text-green-600 dark:text-green-400 font-bold">฿{fareEstimate.fareMin} – ฿{fareEstimate.fareMax}</span></span>
+                      )}
                     </p>
                   </div>
 
                   {/* Dynamic Slider */}
                   <div className="w-full px-2 py-3">
                     <div className="relative w-full h-12 flex items-center">
-                      {/* Green zone: where fare is "fair" */}
+                      {/* Full track background */}
+                      <div className="absolute h-2.5 rounded-full z-0 top-[22px] left-0 right-0 bg-slate-100 dark:bg-slate-700 pointer-events-none" />
+                      {/* Left zone: below fair price (orange) */}
+                      {greenLeft > 0 && (
+                        <div
+                          className="absolute h-2.5 bg-orange-200 dark:bg-orange-900/60 rounded-l-full z-[1] top-[22px] pointer-events-none"
+                          style={{ left: 0, width: `${greenLeft}%` }}
+                        />
+                      )}
+                      {/* Green zone: fair price range */}
                       <div
-                        className="absolute h-2.5 bg-green-100 dark:bg-green-900/40 rounded-full z-0 top-[22px] pointer-events-none"
+                        className="absolute h-2.5 bg-green-200 dark:bg-green-800/60 z-[1] top-[22px] pointer-events-none"
                         style={{ left: `${greenLeft}%`, right: `${greenRight}%` }}
                       />
+                      {/* Right zone: above fair price (blue) */}
+                      {greenRight > 0 && (
+                        <div
+                          className="absolute h-2.5 bg-blue-200 dark:bg-blue-900/60 rounded-r-full z-[1] top-[22px] pointer-events-none"
+                          style={{ right: 0, width: `${greenRight}%` }}
+                        />
+                      )}
                       <input
                         type="range"
                         min={sliderMin}
@@ -393,9 +409,13 @@ export default function RideRequestPage() {
                         className="w-full relative z-10 bg-transparent appearance-none h-2 cursor-pointer focus:outline-none"
                       />
                     </div>
-                    <div className="flex justify-between text-xs font-medium text-slate-400 px-1 mt-[-8px]">
-                      <span>฿{sliderMin}</span>
-                      <span>฿{sliderMax}</span>
+                    {/* Zone labels */}
+                    <div className="flex justify-between text-[10px] font-medium px-1 mt-[-4px] mb-1">
+                      <span className="text-orange-400">฿{sliderMin}</span>
+                      <span className="text-green-500 font-semibold">
+                        ฿{fareEstimate.fareMin} – ฿{fareEstimate.fareMax}
+                      </span>
+                      <span className="text-blue-400">฿{sliderMax}</span>
                     </div>
                   </div>
 
@@ -494,7 +514,7 @@ export default function RideRequestPage() {
                 <>
                   <span className="text-xs text-slate-400 block">ระยะทาง</span>
                   <span className="text-sm font-bold text-slate-800 dark:text-white">
-                    {(fareEstimate.distance / 1000).toFixed(1)} กม.
+                    {fareEstimate.distance > 0 ? (fareEstimate.distance / 1000).toFixed(1) : '–'} กม.
                   </span>
                 </>
               )}
