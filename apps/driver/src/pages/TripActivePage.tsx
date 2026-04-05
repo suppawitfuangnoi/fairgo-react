@@ -106,6 +106,13 @@ export default function TripActivePage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const positionRef = useRef(position);
+  const tripRef = useRef<Trip | null>(null);
+
+  // Keep positionRef in sync with position state
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
 
   const scrollChatToBottom = useCallback(() => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -114,8 +121,11 @@ export default function TripActivePage() {
   useEffect(() => {
     const fetchTrip = async () => {
       try {
-        const response = await apiFetch<Trip>('/api/v1/trips/active');
-        if (response) setTrip(response);
+        const response = await apiFetch<Trip>('/trips/active');
+        if (response) {
+          setTrip(response);
+          tripRef.current = response;
+        }
         if (response?.status === 'COMPLETED') {
           navigate(`/trip-summary/${response.id}`, { replace: true });
         }
@@ -156,6 +166,32 @@ export default function TripActivePage() {
     };
     socket.on('chat:message', onChatMessage);
 
+    // Broadcast driver GPS location every 3 seconds
+    const locationInterval = setInterval(() => {
+      const pos = positionRef.current;
+      if (tripRef.current?.id && pos) {
+        socketClient.emit('driver:location', {
+          tripId: tripRef.current.id,
+          lat: pos.lat,
+          lng: pos.lng,
+          heading: 0,
+        });
+      }
+    }, 3000);
+
+    // Update location via REST API every 30 seconds
+    const restLocationInterval = setInterval(async () => {
+      const pos = positionRef.current;
+      if (tripRef.current?.id && pos) {
+        try {
+          await apiFetch(`/trips/${tripRef.current.id}/location`, {
+            method: 'PATCH',
+            body: { lat: pos.lat, lng: pos.lng, heading: 0 },
+          });
+        } catch { /* ignore */ }
+      }
+    }, 30000);
+
     // Fallback poll every 12s
     pollRef.current = setInterval(fetchTrip, 12000);
 
@@ -163,6 +199,8 @@ export default function TripActivePage() {
       socket.off(socketEvents.ON_TRIP_STATUS, onTripStatus);
       socket.off('chat:message', onChatMessage);
       clearInterval(pollRef.current!);
+      clearInterval(locationInterval);
+      clearInterval(restLocationInterval);
     };
   }, [navigate, scrollChatToBottom]);
 
@@ -190,7 +228,7 @@ export default function TripActivePage() {
 
     try {
       const nextStatus = NEXT_STATUS[trip.status];
-      await apiFetch(`/api/v1/trips/${trip.id}/status`, {
+      await apiFetch(`/trips/${trip.id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status: nextStatus }),
       });

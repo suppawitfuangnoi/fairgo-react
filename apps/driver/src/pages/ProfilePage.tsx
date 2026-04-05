@@ -36,7 +36,7 @@ export default function ProfilePage() {
   async function fetchProfile() {
     setLoading(true);
     try {
-      const res = await apiFetch<DriverProfile>('/users/me');
+      const res = await apiFetch<DriverProfile>('/users/me/driver-profile');
       setProfile(res);
       setForm({
         name: res.name || '',
@@ -60,7 +60,7 @@ export default function ProfilePage() {
   async function handleSave() {
     setSaving(true);
     try {
-      await apiFetch('/users/me', {
+      await apiFetch('/users/me/driver-profile', {
         method: 'PATCH',
         body: form,
       });

@@ -48,9 +48,9 @@ export default function PricingPage() {
 
   const handleSave = async (rule: PricingRule) => {
     try {
-      await apiFetch(`/admin/pricing`, {
-        method: 'PUT',
-        body: { ...editData, vehicleType: rule.vehicleType },
+      await apiFetch(`/admin/pricing/${rule.id}`, {
+        method: 'PATCH',
+        body: editData,
       });
       showToast('Pricing updated successfully', 'success');
       fetchPricing();

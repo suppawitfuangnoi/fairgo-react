@@ -9,6 +9,7 @@ export interface DriverProfile {
   rating?: number;
   totalTrips?: number;
   isOnline?: boolean;
+  vehicleType?: 'TAXI' | 'MOTORCYCLE' | 'TUKTUK';
   role: 'DRIVER';
   verificationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
 }

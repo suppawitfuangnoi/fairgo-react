@@ -112,14 +112,14 @@ export default function TripActivePage() {
     };
 
     socket.on(socketEvents.ON_TRIP_STATUS, onTripStatus);
-    socket.on(socketEvents.ON_DRIVER_LOCATION, onDriverLocation);
+    socket.on('trip:driver:location', onDriverLocation);
     socket.on('chat:message', onChatMessage);
 
     pollIntervalRef.current = setInterval(fetchTrip, 10000);
 
     return () => {
       socket.off(socketEvents.ON_TRIP_STATUS, onTripStatus);
-      socket.off(socketEvents.ON_DRIVER_LOCATION, onDriverLocation);
+      socket.off('trip:driver:location', onDriverLocation);
       socket.off('chat:message', onChatMessage);
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };

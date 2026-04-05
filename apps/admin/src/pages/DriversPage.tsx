@@ -8,7 +8,7 @@ interface Driver {
   phone: string;
   vehicleType: string;
   vehiclePlate: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
   rating: number;
   trips: number;
   userId: string;
@@ -38,9 +38,16 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      const status = tab === 'all' ? '' : tab.toUpperCase();
+      let statusParam = '';
+      if (tab === 'all') {
+        statusParam = '';
+      } else if (tab === 'approved') {
+        statusParam = 'VERIFIED';
+      } else {
+        statusParam = tab.toUpperCase();
+      }
       const response = await apiFetch<{ drivers: Driver[] }>(
-        `/admin/drivers?${status ? `status=${status}` : ''}`
+        `/admin/drivers?${statusParam ? `status=${statusParam}` : ''}`
       );
       setDrivers(response.drivers || []);
     } catch (err) {
@@ -53,8 +60,8 @@ export default function DriversPage() {
   const handleApprove = async (driverId: string) => {
     try {
       await apiFetch(`/admin/drivers/${driverId}/verify`, {
-        method: 'POST',
-        body: { status: 'APPROVED' },
+        method: 'PATCH',
+        body: { status: 'VERIFIED' },
       });
       showToast('Driver approved successfully', 'success');
       fetchDrivers();
@@ -67,7 +74,7 @@ export default function DriversPage() {
   const handleReject = async (driverId: string) => {
     try {
       await apiFetch(`/admin/drivers/${driverId}/verify`, {
-        method: 'POST',
+        method: 'PATCH',
         body: { status: 'REJECTED' },
       });
       showToast('Driver rejected', 'success');
@@ -80,7 +87,7 @@ export default function DriversPage() {
 
   const getStatusColor = (st: string) => {
     switch (st) {
-      case 'APPROVED':
+      case 'VERIFIED':
         return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400';
       case 'PENDING':
         return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400';
@@ -96,7 +103,7 @@ export default function DriversPage() {
   const tabCounts = {
     all: drivers.length,
     pending: drivers.filter((d) => d.status === 'PENDING').length,
-    approved: drivers.filter((d) => d.status === 'APPROVED').length,
+    approved: drivers.filter((d) => d.status === 'VERIFIED').length,
     rejected: drivers.filter((d) => d.status === 'REJECTED').length,
   };
 
@@ -254,14 +261,24 @@ export default function DriversPage() {
                           <span className="material-symbols-outlined text-xl">edit</span>
                         </button>
                         {driver.status === 'PENDING' && (
-                          <button
-                            onClick={() =>
-                              setConfirmDialog({ driverId: driver.id, action: 'approve' })
-                            }
-                            className="px-4 py-1.5 bg-primary text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
-                          >
-                            Verify Driver
-                          </button>
+                          <>
+                            <button
+                              onClick={() =>
+                                setConfirmDialog({ driverId: driver.id, action: 'approve' })
+                              }
+                              className="px-4 py-1.5 bg-primary text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+                            >
+                              Verify
+                            </button>
+                            <button
+                              onClick={() =>
+                                setConfirmDialog({ driverId: driver.id, action: 'reject' })
+                              }
+                              className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+                            >
+                              Reject
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -298,12 +315,12 @@ export default function DriversPage() {
           >
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
               {confirmDialog.action === 'approve'
-                ? 'Approve Driver?'
+                ? 'Verify Driver?'
                 : 'Reject Driver?'}
             </h3>
             <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
               {confirmDialog.action === 'approve'
-                ? 'This driver will be approved and can start accepting trips.'
+                ? 'This driver will be verified and can start accepting trips.'
                 : 'This driver will be rejected and their application will be declined.'}
             </p>
             <div className="flex gap-3">

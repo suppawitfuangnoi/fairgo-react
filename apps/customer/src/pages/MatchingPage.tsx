@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { socketClient, socketEvents } from '@/lib/socket';
+import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/lib/toast';
 import { IMG } from '@/lib/assets';
 import GoogleMap from '@/components/GoogleMap';
@@ -22,6 +23,7 @@ interface DriverOffer {
 export default function MatchingPage() {
   const navigate = useNavigate();
   const { position } = useGeolocation();
+  const user = useAuthStore((state) => state.user);
   const [offers, setOffers] = useState<DriverOffer[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -86,6 +88,13 @@ export default function MatchingPage() {
       clearInterval(pollRef.current);
     };
   }, [navigate]);
+
+  // ── Join user room ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (user?.id) {
+      socketClient.joinRoom(`user:${user.id}`);
+    }
+  }, [user?.id]);
 
   // ── Elapsed timer ─────────────────────────────────────────────────────
   useEffect(() => {

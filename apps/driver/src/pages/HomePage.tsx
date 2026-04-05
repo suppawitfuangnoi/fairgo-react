@@ -59,7 +59,7 @@ export default function HomePage() {
     // Check if there's already an active trip on mount
     (async () => {
       try {
-        const trip = await apiFetch<any>('/api/v1/trips/active');
+        const trip = await apiFetch<any>('/trips/active');
         if (trip?.id) navigate('/trip-active', { replace: true });
       } catch { /* no active trip */ }
     })();
@@ -75,7 +75,7 @@ export default function HomePage() {
     const fetchRides = async () => {
       try {
         const response = await apiFetch<{ data: { rides: RideRequest[]; totalTrips: number; totalEarnings: number } }>(
-          `/api/v1/rides/nearby?latitude=${position.lat}&longitude=${position.lng}&radius=10`
+          `/rides/nearby?latitude=${position.lat}&longitude=${position.lng}&radius=10`
         );
         if (response.data) {
           setRides(response.data.rides || []);
@@ -88,6 +88,12 @@ export default function HomePage() {
     fetchRides();
     // Socket: real-time new ride requests
     const socket = socketClient.connect();
+
+    // Join user room to receive ride requests and events
+    if (user?.id) {
+      socketClient.joinRoom(`user:${user.id}`);
+    }
+
     const onNewRide = (ride: RideRequest) => {
       setRides(prev => {
         if (prev.find(r => r.id === ride.id)) return prev;
@@ -115,18 +121,23 @@ export default function HomePage() {
   const toggleOnline = async () => {
     setLoading(true);
     try {
-      await apiFetch('/api/v1/users/me/driver-profile', {
+      await apiFetch('/users/me/driver-profile', {
         method: 'PATCH',
         body: JSON.stringify({ isOnline: !isOnline }),
       });
       const next = !isOnline;
       setIsOnline(next);
       updateUser({ isOnline: next });
-      if (!next) {
+
+      // Emit socket events for online/offline
+      const socket = socketClient.connect();
+      if (next) {
+        socket.emit('driver:online', { vehicleType: user?.vehicleType || 'TAXI' });
+        toast.success('คุณออนไลน์แล้ว!');
+      } else {
+        socket.emit('driver:offline');
         setRides([]);
         toast.info('คุณออฟไลน์แล้ว');
-      } else {
-        toast.success('คุณออนไลน์แล้ว!');
       }
     } catch {
       toast.error('ไม่สามารถเปลี่ยนสถานะได้');

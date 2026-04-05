@@ -26,7 +26,7 @@ export default function HistoryPage() {
     const fetchTrips = async () => {
       try {
         const response = await apiFetch<{ trips: HistoryTrip[]; hasMore: boolean }>(
-          `/trips?status=COMPLETED&limit=20&page=${page}`
+          `/trips?limit=20&page=${page}`
         );
         if (page === 1) {
           setTrips(response.trips || []);
