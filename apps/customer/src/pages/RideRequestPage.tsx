@@ -119,7 +119,7 @@ export default function RideRequestPage() {
     fare <= fareEstimate.fareMax;
 
   return (
-    <div className="w-full max-w-md h-screen bg-white dark:bg-slate-900 shadow-2xl relative flex flex-col overflow-hidden">
+    <div className="w-full max-w-md h-screen bg-white dark:bg-slate-900 shadow-2xl relative flex flex-col overflow-hidden font-display">
       {/* Top Header & Map Area */}
       <div className="relative h-[35%] w-full bg-slate-100">
         <div
@@ -183,7 +183,7 @@ export default function RideRequestPage() {
           </div>
 
           {/* Route Summary Card */}
-          <div className="bg-background-light dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+          <div className="bg-background-light dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm ring-1 ring-black/5">
             <div className="flex flex-col gap-4 relative">
               {/* Connecting Line */}
               <div className="absolute left-[11px] top-[24px] bottom-[24px] w-0.5 bg-slate-300 dark:bg-slate-600 border-l border-dashed border-slate-400"></div>

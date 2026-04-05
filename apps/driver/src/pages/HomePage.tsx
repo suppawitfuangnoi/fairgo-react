@@ -6,6 +6,26 @@ import BottomNav from '@/components/BottomNav';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 
+// Add styles for custom scrollbar
+const styles = `
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .route-line {
+    background-image: linear-gradient(to bottom, #cbd5e1 50%, rgba(255,255,255,0) 0%);
+    background-position: left;
+    background-size: 2px 10px;
+    background-repeat: repeat-y;
+  }
+  .dark .route-line {
+    background-image: linear-gradient(to bottom, #475569 50%, rgba(255,255,255,0) 0%);
+  }
+`;
+
 interface RideRequest {
   id: string;
   passengerName: string;
@@ -121,6 +141,8 @@ export default function HomePage() {
   };
 
   return (
+    <>
+      <style>{styles}</style>
     <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex flex-col pb-24">
       <header className="sticky top-0 z-30 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-6 pt-12 pb-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
         <div>
@@ -130,36 +152,30 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="relative inline-flex items-center cursor-pointer bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700">
-            <input
-              type="checkbox"
-              checked={isOnline}
-              onChange={toggleOnline}
-              disabled={loading}
-              className="sr-only peer"
-            />
-            <div className="w-5 h-5 rounded-full bg-slate-300 peer-checked:bg-primary transition-colors"></div>
-            <span className="ml-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 bg-white dark:bg-surface-dark px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700">
+            <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></div>
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
               {isOnline ? 'Online' : 'Offline'}
             </span>
-          </label>
+          </div>
 
           <button className="relative w-10 h-10 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm overflow-hidden bg-slate-200 dark:bg-slate-700">
             {user?.avatar ? (
               <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 w-full h-full flex items-center justify-center">
+              <span className="material-icons-round text-slate-600 dark:text-slate-300 w-full h-full flex items-center justify-center">
                 person
               </span>
             )}
+            {isOnline && <div className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full border-2 border-white dark:border-background-dark"></div>}
           </button>
         </div>
       </header>
 
       {!isOnline ? (
         <main className="flex-1 px-4 pt-12 flex flex-col items-center justify-center text-center">
-          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-4xl text-slate-400 dark:text-slate-500">
+          <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+            <span className="material-icons-round text-5xl text-slate-400 dark:text-slate-500">
               cloud_off
             </span>
           </div>
@@ -169,11 +185,11 @@ export default function HomePage() {
             onClick={toggleOnline}
             className="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-xl transition flex items-center gap-2"
           >
-            <span className="material-symbols-outlined">power_settings_new</span>
+            <span className="material-icons-round">power_settings_new</span>
             เปิดออนไลน์
           </button>
 
-          <div className="mt-12 w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl p-6">
+          <div className="mt-12 w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Today's Earnings</h3>
             </div>
@@ -190,7 +206,7 @@ export default function HomePage() {
           </div>
         </main>
       ) : (
-        <main className="flex-1 px-4 pt-6 space-y-5 overflow-y-auto">
+        <main className="flex-1 px-4 pt-6 space-y-5 overflow-y-auto no-scrollbar">
           {rides.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="relative w-24 h-24 mb-6">
@@ -203,10 +219,10 @@ export default function HomePage() {
               <p className="text-slate-500 dark:text-slate-400 text-sm">เปลี่ยนตำแหน่งหรอื รอสักครู่</p>
             </div>
           ) : (
-            rides.map((ride) => (
+            rides.map((ride, idx) => (
               <article
                 key={ride.id}
-                className="relative bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden"
+                className={`relative bg-surface-light dark:bg-surface-dark rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-800 overflow-hidden transform transition hover:scale-[1.01] duration-200 ${idx > 1 ? 'opacity-90' : ''}`}
               >
                 <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
 
@@ -221,7 +237,7 @@ export default function HomePage() {
                           {ride.passengerName}
                         </h3>
                         <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm font-medium">
-                          <span className="text-yellow-400 material-symbols-outlined text-sm mr-1">
+                          <span className="text-yellow-400 material-icons-round text-sm mr-1">
                             star
                           </span>
                           <span>{ride.passengerRating}</span>
@@ -243,7 +259,7 @@ export default function HomePage() {
                   <div className="h-px bg-slate-100 dark:bg-slate-700/50 w-full mb-5"></div>
 
                   <div className="relative pl-2 mb-6">
-                    <div className="absolute left-[15px] top-3 bottom-8 w-0.5 bg-gradient-to-b from-primary to-primary/20"></div>
+                    <div className="absolute left-[15px] top-3 bottom-8 w-0.5 route-line"></div>
 
                     <div className="relative flex items-start gap-4 mb-6">
                       <div className="relative z-10 flex-none mt-1">
@@ -277,16 +293,16 @@ export default function HomePage() {
                   <div className="flex gap-3 mt-2">
                     <button
                       onClick={() => handleSkipRide(ride.id)}
-                      className="flex-1 py-3.5 px-4 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-base hover:bg-slate-200 dark:hover:bg-slate-600 transition active:scale-[0.98]"
+                      className="flex-1 py-3.5 px-4 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-base hover:bg-slate-200 dark:hover:bg-slate-700 transition active:scale-[0.98]"
                     >
-                      ข้าม
+                      Reject
                     </button>
                     <button
                       onClick={() => handleOfferSubmit(ride.id)}
                       className="flex-[2] py-3.5 px-4 rounded-lg bg-primary text-white font-bold text-base shadow-[0_4px_14px_rgba(19,200,236,0.4)] hover:bg-primary-dark hover:shadow-lg transition active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                      <span>ยื่นข้อเสนอ</span>
-                      <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                      <span>Accept Job</span>
+                      <span className="material-icons-round text-lg">arrow_forward</span>
                     </button>
                   </div>
                 </div>
@@ -298,5 +314,6 @@ export default function HomePage() {
 
       <BottomNav />
     </div>
+    </>
   );
 }

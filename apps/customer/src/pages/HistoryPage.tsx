@@ -77,15 +77,15 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark font-display">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-6 py-4">
+      <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 px-6 py-4 shadow-sm">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-primary hover:text-primary-dark transition-colors mb-3"
+          className="flex items-center gap-2 text-primary hover:text-primary-dark transition-colors mb-3 font-semibold"
         >
           <span className="material-icons-round">arrow_back</span>
-          <span className="font-semibold">กลับ</span>
+          <span>กลับ</span>
         </button>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           ประวัติการเดินทาง
@@ -111,7 +111,7 @@ export default function HistoryPage() {
             <button
               key={trip.id}
               onClick={() => navigate(`/trip-summary/${trip.id}`)}
-              className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left"
+              className="w-full flex items-center gap-4 p-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left shadow-sm border border-slate-100 dark:border-slate-700"
             >
               {/* Icon */}
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

@@ -125,44 +125,51 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Overview Dashboard
+        </h2>
+      </div>
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           {
-            label: 'Total Users',
-            value: stats?.totalUsers || 0,
-            icon: 'group',
-            color: 'from-blue-500 to-blue-400',
+            label: 'Active Trips',
+            value: stats?.totalTripsToday || 0,
+            icon: 'route',
             trend: '+12.5%',
+          },
+          {
+            label: 'Total Revenue',
+            value: `฿${(stats?.revenueToday || 0).toLocaleString('th-TH', { minimumFractionDigits: 0 })}`,
+            icon: 'payments',
+            trend: '+8.2%',
+          },
+          {
+            label: 'New Users',
+            value: stats?.totalUsers || 0,
+            icon: 'person_add',
+            trend: '-3.1%',
           },
           {
             label: 'Active Drivers',
             value: stats?.activeDrivers || 0,
-            icon: 'drive_eta',
-            color: 'from-emerald-500 to-emerald-400',
+            icon: 'airline_stops',
             trend: '+5.4%',
-          },
-          {
-            label: 'Trips Today',
-            value: stats?.totalTripsToday || 0,
-            icon: 'route',
-            color: 'from-primary to-cyan-400',
-            trend: '+12.5%',
-          },
-          {
-            label: 'Revenue Today',
-            value: `฿${(stats?.revenueToday || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`,
-            icon: 'payments',
-            color: 'from-amber-500 to-amber-400',
-            trend: '+8.2%',
           },
         ].map((stat, idx) => (
           <div key={idx} className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <div className={`w-10 h-10 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center text-white`}>
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
                 <span className="material-symbols-outlined">{stat.icon}</span>
               </div>
-              <span className="text-xs font-bold text-emerald-500 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-1 rounded-full">
+              <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                stat.trend.startsWith('-')
+                  ? 'text-red-500 bg-red-100 dark:bg-red-500/10'
+                  : 'text-emerald-500 bg-emerald-100 dark:bg-emerald-500/10'
+              }`}>
                 {stat.trend}
               </span>
             </div>

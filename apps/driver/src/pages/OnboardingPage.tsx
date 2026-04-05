@@ -25,6 +25,24 @@ const SLIDES: Slide[] = [
   },
 ];
 
+const styles = `
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+`;
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -40,65 +58,82 @@ export default function OnboardingPage() {
   const slide = SLIDES[currentSlide];
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex items-center justify-center">
-      <div className="max-w-md w-full max-h-[850px] mx-auto bg-white dark:bg-slate-900 shadow-2xl rounded-3xl overflow-hidden flex flex-col">
-        <div className="h-12 flex items-end justify-between px-6 pb-2">
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">9:41</span>
-          <div className="flex gap-1.5 items-center text-xs text-slate-900 dark:text-white">
-            <span className="material-symbols-outlined">signal_cellular_alt</span>
-            <span className="material-symbols-outlined">wifi</span>
-            <span className="material-symbols-outlined">battery_full</span>
-          </div>
-        </div>
-
-        <div className="absolute top-14 right-6 z-20">
-          <button
-            onClick={() => navigate('/login')}
-            className="text-slate-500 hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors text-sm font-medium px-3 py-1 rounded-full"
-          >
-            ข้าม
-          </button>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center px-8 pt-10 pb-24">
-          <div className="relative w-full aspect-square mb-10 flex items-center justify-center max-w-[200px]">
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-primary/5 rounded-full blur-3xl scale-90 animate-pulse"></div>
-            <div className="relative flex items-center justify-center">
-              <span className="material-symbols-outlined text-7xl text-primary">{slide.icon}</span>
+    <>
+      <style>{styles}</style>
+      <div className="bg-gray-100 font-display flex items-center justify-center min-h-screen">
+        <div className="relative w-full max-w-md h-[844px] bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden sm:rounded-[3rem] flex flex-col">
+          {/* Status Bar Area */}
+          <div className="absolute top-0 w-full h-12 flex justify-between items-center px-6 z-20 text-text-main dark:text-white">
+            <span className="text-sm font-semibold">9:41</span>
+            <div className="flex gap-1.5 items-center">
+              <span className="material-icons-round text-sm">signal_cellular_alt</span>
+              <span className="material-icons-round text-sm">wifi</span>
+              <span className="material-icons-round text-[18px]">battery_full</span>
             </div>
           </div>
 
-          <div className="text-center w-full max-w-[300px]">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-4 leading-tight">{slide.title}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed">{slide.description}</p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 w-full px-8 pb-10 pt-4 bg-gradient-to-t from-white via-white to-transparent dark:from-slate-900 dark:via-slate-900 z-20">
-          <div className="flex flex-col items-center gap-8">
-            <div className="flex gap-2">
-              {SLIDES.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    idx === currentSlide ? 'w-8 bg-primary' : 'w-2 bg-gray-300 dark:bg-gray-700'
-                  }`}
-                ></div>
-              ))}
-            </div>
-
+          {/* Skip Button */}
+          <div className="absolute top-14 right-6 z-20">
             <button
-              onClick={handleNext}
-              className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] transition-all text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+              onClick={() => navigate('/login')}
+              className="text-text-muted hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors text-sm font-medium px-3 py-1 rounded-full"
             >
-              <span>{currentSlide === SLIDES.length - 1 ? 'เริ่มสมัคร' : 'ต่อไป'}</span>
-              <span className="material-symbols-outlined">arrow_forward</span>
+              ข้าม (Skip)
             </button>
           </div>
-        </div>
 
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-1/3 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col items-center justify-center px-8 pt-10 pb-24 relative z-10">
+            {/* Illustration Container */}
+            <div className="relative w-full aspect-square mb-10 flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-primary/5 rounded-full blur-3xl scale-90 animate-pulse"></div>
+              <div className="relative w-full h-full animate-float">
+                <div className="flex items-center justify-center h-full">
+                  <span className="material-icons-round text-7xl text-primary">{slide.icon}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Text Content */}
+            <div className="text-center w-full max-w-[300px] animate-fade-in">
+              <h1 className="text-3xl font-bold text-text-main dark:text-white mb-4 leading-tight font-thai">
+                {slide.title}
+              </h1>
+              <p className="text-text-muted dark:text-gray-400 text-base leading-relaxed font-thai">
+                {slide.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom Controls Area */}
+          <div className="absolute bottom-0 w-full px-8 pb-10 pt-4 bg-gradient-to-t from-background-light via-background-light to-transparent dark:from-background-dark dark:via-background-dark z-20">
+            <div className="flex flex-col items-center gap-8">
+              {/* Pagination Indicators */}
+              <div className="flex gap-2">
+                {SLIDES.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`rounded-full transition-all duration-300 ${
+                      idx === currentSlide
+                        ? 'w-8 h-2 bg-primary'
+                        : 'w-2 h-2 bg-gray-300 dark:bg-gray-700'
+                    }`}
+                  ></div>
+                ))}
+              </div>
+
+              {/* Primary Action Button */}
+              <button
+                onClick={handleNext}
+                className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] transition-all text-white font-bold text-lg py-4 rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center group"
+              >
+                <span className="font-thai mr-2">{currentSlide === SLIDES.length - 1 ? 'เริ่มสมัคร' : 'ต่อไป'}</span>
+                <span className="material-icons-round group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

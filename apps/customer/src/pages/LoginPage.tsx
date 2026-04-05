@@ -99,7 +99,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col justify-between items-center px-6 py-8">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col justify-between items-center px-6 py-8 font-display">
       <div className="flex flex-col items-center justify-center flex-1 w-full">
         {/* Logo */}
         <div className="mb-8">
@@ -120,7 +120,7 @@ export default function LoginPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="w-full mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="w-full mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
             <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
           </div>
         )}
@@ -137,14 +137,14 @@ export default function LoginPage() {
                 placeholder="081-234-5678"
                 value={phone}
                 onChange={handlePhoneChange}
-                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 text-slate-900 dark:text-white transition-all"
               />
             </div>
 
             <button
               onClick={handleRequestOTP}
               disabled={loading || phone.replace(/\D/g, '').length < 10}
-              className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all"
+              className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 transition-all"
             >
               {loading ? 'กำลังส่ง...' : 'ขอ OTP'}
             </button>
@@ -169,14 +169,14 @@ export default function LoginPage() {
                 value={otp}
                 onChange={handleOTPChange}
                 maxLength={6}
-                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center text-2xl tracking-widest font-mono"
+                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-center text-2xl tracking-widest font-mono transition-all"
               />
             </div>
 
             <button
               onClick={handleVerifyOTP}
               disabled={loading || otp.length !== 6}
-              className="w-full bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all mb-4"
+              className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/20 transition-all mb-4"
             >
               {loading ? 'กำลังตรวจสอบ...' : 'ยืนยัน OTP'}
             </button>
@@ -192,7 +192,7 @@ export default function LoginPage() {
                   setOtp('');
                   setCountdown(0);
                 }}
-                className="text-center text-primary hover:underline text-sm"
+                className="text-center text-primary hover:underline text-sm font-medium"
               >
                 ขอ OTP ใหม่
               </button>

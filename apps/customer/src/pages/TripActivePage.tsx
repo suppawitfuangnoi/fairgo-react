@@ -198,7 +198,7 @@ export default function TripActivePage() {
   const destPos = { x: 78, y: 75 };
 
   return (
-    <div className="w-full max-w-md mx-auto h-screen bg-slate-100 overflow-hidden relative flex flex-col">
+    <div className="w-full max-w-md mx-auto h-screen bg-slate-100 overflow-hidden relative flex flex-col font-display shadow-2xl">
 
       {/* ── MAP ── */}
       <div

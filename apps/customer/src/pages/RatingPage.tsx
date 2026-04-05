@@ -96,8 +96,8 @@ export default function RatingPage() {
   }
 
   return (
-    <main className="w-full max-w-md h-screen max-h-[900px] bg-white dark:bg-[#15262a] shadow-2xl relative overflow-hidden flex flex-col">
-      {/* Top Navigation */}
+    <main className="w-full max-w-md h-screen max-h-[900px] bg-white dark:bg-[#15262a] shadow-2xl relative overflow-hidden flex flex-col font-display">
+      {/* Top Navigation / Close */}
       <header className="flex justify-between items-center p-6 pb-2 z-10">
         <button
           onClick={() => navigate(-1)}
@@ -106,12 +106,13 @@ export default function RatingPage() {
           <span className="material-icons-round text-2xl">close</span>
         </button>
         <span className="text-xs font-bold tracking-widest uppercase text-primary">
-          เดินทางเสร็จสิ้น
+          Ride Completed
         </span>
         <div className="w-10"></div>
+        {/* Spacer for visual balance */}
       </header>
 
-      {/* Scrollable Content */}
+      {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-6 pt-4 pb-24">
         {/* Driver Profile & Header */}
         <div className="flex flex-col items-center text-center mb-8">

@@ -4,6 +4,30 @@ import { apiFetch } from '@/lib/api';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 
+const styles = `
+  .map-bg {
+    background-color: #e5e7eb;
+    background-image:
+      linear-gradient(#d1d5db 2px, transparent 2px),
+      linear-gradient(90deg, #d1d5db 2px, transparent 2px);
+    background-size: 40px 40px;
+  }
+  .dark .map-bg {
+    background-color: #1f2937;
+    background-image:
+      linear-gradient(#374151 2px, transparent 2px),
+      linear-gradient(90deg, #374151 2px, transparent 2px);
+    background-size: 40px 40px;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+`;
+
 interface ChatMessage {
   id: string;
   from: 'me' | 'customer';
@@ -206,7 +230,14 @@ export default function TripActivePage() {
   }, [trip?.id]);
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex items-center justify-center pb-6 relative">
+    <>
+      <style>{styles}</style>
+    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden">
+      {/* Interactive Map Layer (Background) */}
+      {!chatOpen && (
+        <div className="absolute inset-0 z-0 map-bg w-full h-full" />
+      )}
+
       {/* Chat Panel Overlay */}
       {chatOpen && (
         <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900 max-w-md mx-auto">
@@ -268,128 +299,109 @@ export default function TripActivePage() {
         </div>
       )}
 
-      <div className="max-w-md w-full mx-auto bg-white dark:bg-slate-900 shadow-2xl rounded-3xl overflow-hidden flex flex-col max-h-[850px]">
-        <div className="h-12 flex items-end justify-between px-6 pb-2">
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">9:41</span>
-          <div className="flex gap-1.5 items-center text-xs text-slate-900 dark:text-white">
-            <span className="material-symbols-outlined">signal_cellular_alt</span>
-            <span className="material-symbols-outlined">wifi</span>
-            <span className="material-symbols-outlined">battery_full</span>
-          </div>
-        </div>
-
-        <div className="relative h-40 bg-gradient-to-b from-slate-100 to-transparent dark:from-slate-800 flex items-center justify-center overflow-hidden">
-          <div className="w-full h-full bg-no-repeat bg-cover bg-center opacity-60 dark:opacity-30"></div>
-          <div className="text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">Current Status</p>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {STATUS_LABELS[trip.status]}
-            </h2>
-          </div>
-        </div>
-
-        <div className="px-6 py-6">
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                Trip Progress
-              </span>
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                {progress}%
-              </span>
-            </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-primary h-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-          </div>
-
-          <div className="bg-background-light dark:bg-slate-800 rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200">
-                {trip.passengerName[0]}
+      {!chatOpen && (
+        <>
+          {/* Top Status Header & SOS */}
+          <div className="absolute top-0 left-0 w-full z-20 pt-14 px-5 flex justify-between items-start pointer-events-none">
+            {/* Status Pill */}
+            <div className="pointer-events-auto bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-soft rounded-xl p-3 pr-5 flex items-center gap-3 max-w-[75%] border border-slate-100 dark:border-slate-700">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <span className="material-icons-round text-primary text-xl">near_me</span>
               </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-900 dark:text-white">{trip.passengerName}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{trip.passengerPhone}</p>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Status</p>
+                <p className="text-sm font-bold leading-tight">
+                  {trip.status === 'DRIVER_EN_ROUTE' || trip.status === 'DRIVER_ASSIGNED'
+                    ? `Arriving in 5 mins`
+                    : STATUS_LABELS[trip.status]}
+                </p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCallPassenger}
-                  className="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center hover:bg-primary-dark transition"
-                >
-                  <span className="material-symbols-outlined">call</span>
-                </button>
+            </div>
+            {/* SOS / Safety Shield */}
+            <button className="pointer-events-auto w-12 h-12 rounded-full bg-white dark:bg-slate-800 shadow-soft flex items-center justify-center border border-slate-100 dark:border-slate-700 active:scale-95 transition-transform group">
+              <span className="material-icons-round text-slate-400 group-hover:text-primary transition-colors text-2xl">shield</span>
+            </button>
+          </div>
+
+          {/* Bottom Sheet (Driver Info & Controls) */}
+          <div className="absolute bottom-0 left-0 w-full z-30">
+            {/* Floating Chat Bubble Indicator */}
+            <div className="absolute -top-14 right-5 bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
+              Driver is nearby!
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-t-3xl shadow-up p-6 pb-8 border-t border-slate-100 dark:border-slate-700">
+              {/* Drag Handle */}
+              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full mx-auto mb-6"></div>
+
+              {/* Driver Profile & Car */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-bold text-slate-700 dark:text-slate-200 border-4 border-slate-50 dark:border-slate-700 shadow-sm object-cover">
+                      {trip.passengerName[0]}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 p-1 rounded-full">
+                      <div className="flex items-center gap-0.5 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-full border border-yellow-100 dark:border-yellow-700">
+                        <span className="material-icons-round text-yellow-400 text-[10px]">star</span>
+                        <span className="text-[10px] font-bold text-slate-700 dark:text-yellow-100">4.9</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">{trip.passengerName}</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Passenger</p>
+                  </div>
+                </div>
+                {/* Fare Badge */}
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-primary tracking-tight">฿{trip.fare}</div>
+                  <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                    <span className="material-icons-round text-[10px]">lock</span>
+                    Price locked
+                  </div>
+                </div>
+              </div>
+
+              {/* Microcopy Message */}
+              <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-lg p-3 mb-6 flex items-start gap-3">
+                <span className="material-icons-round text-primary text-lg mt-0.5">verified_user</span>
+                <div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    ล็อกราคาแล้ว สบายใจได้
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Your fare is fixed. No surprises at the end of the trip.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setChatOpen(true)}
-                  className="relative w-12 h-12 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded-full flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+                  className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold active:scale-[0.98] transition-all hover:bg-slate-200 dark:hover:bg-slate-600"
                 >
-                  <span className="material-symbols-outlined">chat</span>
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                      {unreadCount}
-                    </span>
-                  )}
+                  <span className="material-icons-round text-xl">chat_bubble_outline</span>
+                  Chat
+                </button>
+                <button
+                  onClick={handleCallPassenger}
+                  className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/30 active:scale-[0.98] transition-all hover:bg-primary-dark"
+                >
+                  <span className="material-icons-round text-xl">call</span>
+                  Call Driver
                 </button>
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Pickup</p>
-                <p className="font-semibold text-slate-900 dark:text-white">{trip.pickupAddress}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Dropoff</p>
-                <p className="font-semibold text-slate-900 dark:text-white">{trip.dropoffAddress}</p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-300 dark:border-slate-700">
-                <div className="text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Fare</p>
-                  <p className="font-bold text-primary">฿{trip.fare}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Distance</p>
-                  <p className="font-bold text-slate-900 dark:text-white">{trip.distance}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Duration</p>
-                  <p className="font-bold text-slate-900 dark:text-white">{trip.duration}</p>
-                </div>
-              </div>
+              {/* Bottom safe area spacer */}
+              <div className="h-4 w-full"></div>
             </div>
           </div>
+        </>
+      )}
 
-          {error && (
-            <div className="bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm mt-4">
-              {error}
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 mt-auto">
-          <button
-            onClick={handleNextStatus}
-            disabled={loading || trip.status === 'COMPLETED'}
-            className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                Updating...
-              </>
-            ) : (
-              <>
-                <span>{STATUS_ACTIONS[trip.status]}</span>
-                <span className="material-symbols-outlined">arrow_forward</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      )}
     </div>
+    </>
   );
 }

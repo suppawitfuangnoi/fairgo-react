@@ -127,22 +127,28 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            User Management
+            User &amp; Driver Management
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Monitor, verify and manage platform participants
+            Monitor, verify and manage platform participants in real-time.
           </p>
         </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-bold text-sm shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-        >
-          <span className="material-symbols-outlined text-xl">file_download</span>
-          Export Data
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-bold text-sm shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            <span className="material-symbols-outlined text-xl">file_download</span>
+            Export Data
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm shadow-md hover:opacity-90 transition-opacity">
+            <span className="material-symbols-outlined text-xl">add</span>
+            Add New User
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -154,7 +160,7 @@ export default function UsersPage() {
             </span>
             <input
               type="text"
-              placeholder="Search by name, email..."
+              placeholder="Search by name, email, or ID..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -167,23 +173,6 @@ export default function UsersPage() {
         <div className="flex gap-3 flex-wrap">
           <div className="relative">
             <select
-              value={role}
-              onChange={(e) => {
-                setRole(e.target.value);
-                setPage(1);
-              }}
-              className="appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm font-semibold focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition-all"
-            >
-              <option value="">All Roles</option>
-              <option value="CUSTOMER">Customer</option>
-              <option value="DRIVER">Driver</option>
-            </select>
-            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-              expand_more
-            </span>
-          </div>
-          <div className="relative">
-            <select
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value);
@@ -194,7 +183,24 @@ export default function UsersPage() {
               <option value="">All Statuses</option>
               <option value="ACTIVE">Active</option>
               <option value="SUSPENDED">Suspended</option>
-              <option value="PENDING_VERIFICATION">Pending</option>
+              <option value="PENDING_VERIFICATION">Pending Verification</option>
+            </select>
+            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+              expand_more
+            </span>
+          </div>
+          <div className="relative">
+            <select
+              value={role}
+              onChange={(e) => {
+                setRole(e.target.value);
+                setPage(1);
+              }}
+              className="appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm font-semibold focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition-all"
+            >
+              <option value="">All Types</option>
+              <option value="CUSTOMER">Passenger</option>
+              <option value="DRIVER">Driver</option>
             </select>
             <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
               expand_more
@@ -218,22 +224,22 @@ export default function UsersPage() {
             </div>
           ) : users.length > 0 ? (
             <table className="w-full text-left">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                <tr>
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Name
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Phone
+                    Type
                   </th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Role
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                    Rating
+                  </th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
+                    Total Trips
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Status
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Created
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
                     Actions
@@ -244,11 +250,17 @@ export default function UsersPage() {
                 {users.map((user) => (
                   <tr
                     key={user.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                    className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors ${
+                      user.status === 'PENDING_VERIFICATION' ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+                    }`}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm">
+                        <div className={`size-9 rounded-full flex items-center justify-center font-bold text-sm ${
+                          user.status === 'PENDING_VERIFICATION'
+                            ? 'bg-primary text-white'
+                            : 'bg-primary/20 text-primary'
+                        }`}>
                           {getInitials(user.name)}
                         </div>
                         <div>
@@ -259,26 +271,32 @@ export default function UsersPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-900 dark:text-white font-medium">
-                      {user.phone}
-                    </td>
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full capitalize">
-                        {user.role}
+                      <span className="px-2.5 py-1 text-xs font-bold bg-slate-100 dark:bg-slate-800 rounded-full capitalize">
+                        {user.role === 'DRIVER' ? 'Driver' : 'Passenger'}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-sm font-bold">4.8</span>
+                        <span
+                          className="material-symbols-outlined text-yellow-400 text-sm"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          star
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center font-semibold text-sm">--</td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full ${getStatusColor(
                           user.status
                         )}`}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                        {user.status}
+                        <span className={`size-1.5 rounded-full bg-current ${user.status === 'PENDING_VERIFICATION' ? 'animate-pulse' : ''}`}></span>
+                        {user.status === 'PENDING_VERIFICATION' ? 'Pending Verification' : user.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
-                      {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
@@ -288,6 +306,12 @@ export default function UsersPage() {
                           title="View"
                         >
                           <span className="material-symbols-outlined text-xl">visibility</span>
+                        </button>
+                        <button
+                          className="p-1.5 text-slate-400 hover:text-primary transition-colors"
+                          title="Edit"
+                        >
+                          <span className="material-symbols-outlined text-xl">edit</span>
                         </button>
                         {user.status === 'ACTIVE' ? (
                           <button
@@ -299,19 +323,17 @@ export default function UsersPage() {
                           >
                             <span className="material-symbols-outlined text-xl">block</span>
                           </button>
-                        ) : (
+                        ) : user.status === 'SUSPENDED' ? (
                           <button
                             onClick={() =>
                               setConfirmDialog({ userId: user.id, action: 'unblock' })
                             }
-                            className="p-1.5 text-slate-400 hover:text-emerald-500 transition-colors"
+                            className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors"
                             title="Reactivate"
                           >
-                            <span className="material-symbols-outlined text-xl">
-                              check_circle
-                            </span>
+                            Reactivate
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -325,11 +347,11 @@ export default function UsersPage() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
+      <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <p className="text-sm text-slate-500">
-          Page <span className="font-bold">{page}</span>
+          Showing <span className="font-bold text-slate-900 dark:text-white">1</span> to <span className="font-bold text-slate-900 dark:text-white">5</span> of <span className="font-bold text-slate-900 dark:text-white">1,420</span> results
         </p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
@@ -337,12 +359,80 @@ export default function UsersPage() {
           >
             <span className="material-symbols-outlined">chevron_left</span>
           </button>
+          <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold">
+            1
+          </button>
+          <button className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-bold">
+            2
+          </button>
+          <button className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-bold">
+            3
+          </button>
+          <span className="px-2">...</span>
+          <button className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-bold">
+            284
+          </button>
           <button
             onClick={() => setPage(page + 1)}
             className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
             <span className="material-symbols-outlined">chevron_right</span>
           </button>
+        </div>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">
+            Total Users
+          </p>
+          <div className="flex items-end gap-2">
+            <span className="text-2xl font-black">12,482</span>
+            <span className="text-xs font-bold text-emerald-500 flex items-center gap-0.5 mb-1">
+              <span className="material-symbols-outlined text-sm">trending_up</span>
+              12%
+            </span>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">
+            Active Drivers
+          </p>
+          <div className="flex items-end gap-2">
+            <span className="text-2xl font-black">1,240</span>
+            <span className="text-xs font-bold text-emerald-500 flex items-center gap-0.5 mb-1">
+              <span className="material-symbols-outlined text-sm">trending_up</span>
+              8%
+            </span>
+          </div>
+        </div>
+        <div className="bg-primary/10 border-primary/30 p-6 rounded-xl border shadow-sm">
+          <p className="text-sm font-bold text-primary uppercase tracking-wider mb-1">
+            Pending Verifications
+          </p>
+          <div className="flex items-end gap-2">
+            <span className="text-2xl font-black text-primary">24</span>
+            <span className="text-xs font-bold bg-primary text-white px-1.5 py-0.5 rounded-full mb-1">
+              Action Required
+            </span>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">
+            Avg. Platform Rating
+          </p>
+          <div className="flex items-end gap-2">
+            <span className="text-2xl font-black">4.85</span>
+            <div className="flex items-center text-yellow-400 mb-1">
+              <span
+                className="material-symbols-outlined text-sm"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                star
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

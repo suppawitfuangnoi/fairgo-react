@@ -78,12 +78,10 @@ export default function TripSummaryPage() {
       {/* Main Content Scrollable Area */}
       <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 px-6 pt-12 pb-24">
         {/* Success Header */}
-        <div className="flex flex-col items-center justify-center text-center mb-8">
+        <div className="flex flex-col items-center justify-center text-center mb-8 animate-fade-in-up">
           <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/30 mb-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>
-            <span className="material-icons-round text-white text-4xl">
-              check_circle
-            </span>
+            <span className="material-icons-round text-white text-4xl">check_circle</span>
           </div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
             เดินทางสำเร็จ!

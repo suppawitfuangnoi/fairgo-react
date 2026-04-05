@@ -4,6 +4,22 @@ import { useAuthStore } from '@/store/auth.store';
 import { apiFetch } from '@/lib/api';
 import BottomNav from '@/components/BottomNav';
 
+const styles = `
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  @keyframes growUp {
+    from { height: 0; }
+  }
+  .bar-animate {
+    animation: growUp 1s ease-out forwards;
+  }
+`;
+
 interface WalletData {
   balance: number;
   totalEarnings: number;
@@ -89,85 +105,101 @@ export default function EarningsPage() {
   const maxBar = Math.max(...chartData, 1);
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-[#f6f8f8] flex flex-col relative overflow-hidden">
+    <>
+      <style>{styles}</style>
+    <div className="w-full max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark flex flex-col relative overflow-hidden">
+      {/* Status Bar */}
+      <div className="h-12 w-full flex items-end justify-between px-6 pb-2 z-20 shrink-0">
+        <span className="text-sm font-semibold text-slate-900 dark:text-white">9:41</span>
+        <div className="flex gap-1.5 items-center text-slate-900 dark:text-white">
+          <span className="material-icons-round text-lg">signal_cellular_alt</span>
+          <span className="material-icons-round text-lg">wifi</span>
+          <span className="material-icons-round text-lg">battery_full</span>
+        </div>
+      </div>
+
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-24 px-5 pt-4">
+      <main className="flex-1 overflow-y-auto hide-scrollbar pb-24 px-5 pt-2">
         {/* Header */}
-        <header className="mb-6">
-          <div className="flex justify-between items-center mb-5">
+        <header className="mb-8">
+          <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm">
-                <div className="w-full h-full bg-primary/20 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary text-lg">person</span>
-                </div>
+              <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                    <span className="material-icons-round text-primary text-lg">person</span>
+                  </div>
+                )}
               </div>
               <div>
-                <p className="text-xs text-slate-500 font-medium">Welcome back,</p>
-                <h2 className="text-sm font-bold text-slate-800">{user?.name || 'Driver'}</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Welcome back,</p>
+                <h2 className="text-sm font-bold text-slate-800 dark:text-white">{user?.name || 'Driver'}</h2>
               </div>
             </div>
             <button
               onClick={() => navigate('/home')}
-              className="p-2 rounded-full bg-white shadow-sm text-slate-400 hover:text-primary transition-colors"
+              className="p-2 rounded-full bg-white dark:bg-surface-dark shadow-card text-slate-400 hover:text-primary transition-colors"
             >
-              <span className="material-symbols-outlined text-lg">notifications</span>
+              <span className="material-icons-round">notifications_none</span>
             </button>
           </div>
 
           {/* Balance Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
+          <div className="bg-white dark:bg-surface-dark rounded-2xl p-6 shadow-soft relative overflow-hidden">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl"></div>
             <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl"></div>
             <div className="relative z-10 text-center">
-              <p className="text-sm font-medium text-slate-400 mb-1">Total Balance</p>
+              <p className="text-sm font-medium text-slate-400 dark:text-slate-400 mb-1">Total Balance</p>
               {loading ? (
-                <div className="h-10 w-32 bg-slate-100 animate-pulse rounded-lg mx-auto mb-6"></div>
+                <div className="h-10 w-32 bg-slate-100 dark:bg-slate-700 animate-pulse rounded-lg mx-auto mb-6"></div>
               ) : (
-                <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-6">
+                <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
                   ${(wallet?.balance ?? 0).toFixed(2)}
                 </h1>
               )}
               <button
                 onClick={() => setShowWithdrawModal(true)}
-                className="w-full bg-primary hover:bg-[#0ea5c6] text-white font-semibold py-3.5 px-6 rounded-xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3.5 px-6 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
               >
                 <span>Withdraw Funds</span>
-                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                <span className="material-icons-round text-white group-hover:translate-x-1 transition-transform text-sm">arrow_forward</span>
               </button>
             </div>
           </div>
         </header>
 
         {/* Earnings Chart Section */}
-        <section className="mb-6">
+        <section className="mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-slate-800">Earnings</h3>
-            <div className="bg-slate-100 p-1 rounded-lg flex text-xs font-semibold">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Earnings</h3>
+            <div className="bg-slate-100 dark:bg-surface-dark p-1 rounded-lg flex text-xs font-semibold">
               <button
                 onClick={() => setPeriod('weekly')}
-                className={`px-4 py-1.5 rounded-md transition-all ${period === 'weekly' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'}`}
+                className={`px-4 py-1.5 rounded-md transition-all ${period === 'weekly' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-300'}`}
               >
                 Weekly
               </button>
               <button
                 onClick={() => setPeriod('daily')}
-                className={`px-4 py-1.5 rounded-md transition-all ${period === 'daily' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'}`}
+                className={`px-4 py-1.5 rounded-md transition-all ${period === 'daily' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-300'}`}
               >
                 Daily
               </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
+          <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 shadow-card">
             {/* Stats */}
-            <div className="flex justify-between border-b border-slate-100 pb-4 mb-4">
-              <div className="text-center w-1/2 border-r border-slate-100">
-                <p className="text-xs text-slate-400 mb-1">Total Trips</p>
-                <p className="text-lg font-bold text-slate-800">{wallet?.totalTrips ?? 42}</p>
+            <div className="flex justify-between border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
+              <div className="text-center w-1/2 border-r border-slate-100 dark:border-slate-700">
+                <p className="text-xs text-slate-400 dark:text-slate-400 mb-1">Total Trips</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-white">{wallet?.totalTrips ?? 42}</p>
               </div>
               <div className="text-center w-1/2">
-                <p className="text-xs text-slate-400 mb-1">Online Hours</p>
-                <p className="text-lg font-bold text-slate-800">{wallet?.onlineHours ?? 38.5}h</p>
+                <p className="text-xs text-slate-400 dark:text-slate-400 mb-1">Online Hours</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-white">{wallet?.onlineHours ?? 38.5}h</p>
               </div>
             </div>
 
@@ -178,9 +210,9 @@ export default function EarningsPage() {
                 const isToday = i === new Date().getDay() - 1;
                 return (
                   <div key={i} className="flex flex-col items-center gap-2 flex-1 group">
-                    <div className="w-full bg-primary/20 rounded-t-md relative h-32 flex items-end overflow-hidden">
+                    <div className="w-full bg-primary/20 dark:bg-slate-700 rounded-t-md relative h-32 flex items-end overflow-hidden">
                       <div
-                        className={`w-full bg-primary rounded-t-md transition-colors group-hover:bg-[#0ea5c6] ${isToday ? 'shadow-[0_0_15px_rgba(19,200,236,0.5)]' : ''}`}
+                        className={`w-full bg-primary rounded-t-md bar-animate transition-colors group-hover:bg-primary-dark ${isToday ? 'shadow-[0_0_15px_rgba(19,200,236,0.5)]' : ''}`}
                         style={{ height: `${heightPct}%` }}
                       ></div>
                     </div>
@@ -197,32 +229,32 @@ export default function EarningsPage() {
         {/* Recent Trips */}
         <section>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-slate-800">Recent Trips</h3>
-            <button
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Recent Trips</h3>
+            <a
               onClick={() => navigate('/history')}
-              className="text-xs font-semibold text-primary hover:text-[#0ea5c6]"
+              className="text-xs font-semibold text-primary hover:text-primary-dark cursor-pointer"
             >
               View All
-            </button>
+            </a>
           </div>
 
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white p-4 rounded-xl shadow-sm animate-pulse">
+                <div key={i} className="bg-white dark:bg-surface-dark p-4 rounded-xl shadow-card animate-pulse">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg"></div>
+                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg"></div>
                     <div className="flex-1">
-                      <div className="h-4 bg-slate-100 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-slate-100 rounded w-1/2"></div>
+                      <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-1/2"></div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : trips.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <span className="material-symbols-outlined text-4xl mb-2 block">receipt_long</span>
+            <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+              <span className="material-icons-round text-4xl mb-2 block">receipt_long</span>
               <p className="text-sm">No completed trips yet</p>
             </div>
           ) : (
@@ -230,28 +262,28 @@ export default function EarningsPage() {
               {trips.map((trip) => (
                 <div
                   key={trip.id}
-                  className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between active:scale-[0.99] transition-transform"
+                  className="bg-white dark:bg-surface-dark p-4 rounded-xl shadow-card flex items-center justify-between group active:scale-[0.99] transition-transform"
                 >
                   <div className="flex items-start gap-4">
                     <div className="bg-primary/10 p-2.5 rounded-lg text-primary">
-                      <span className="material-symbols-outlined text-xl">local_taxi</span>
+                      <span className="material-icons-round text-xl">local_taxi</span>
                     </div>
                     <div>
                       <div className="flex flex-col gap-0.5 mb-1.5">
-                        <h4 className="text-sm font-bold text-slate-800">
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white">
                           {trip.pickupAddress?.split(',')[0] || 'Pickup'}
-                          <span className="text-slate-300 mx-1">→</span>
+                          <span className="text-slate-300 dark:text-slate-400 mx-1">→</span>
                           {trip.dropoffAddress?.split(',')[0] || 'Dropoff'}
                         </h4>
-                        <p className="text-xs text-slate-400">{formatTime(trip.completedAt)}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">{formatTime(trip.completedAt)}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="bg-emerald-100 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        <span className="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                           Paid
                         </span>
                         {trip.hasTip && (
-                          <span className="bg-amber-100 text-amber-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-0.5">
-                            <span className="material-symbols-outlined text-[10px]">star</span> Tip
+                          <span className="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-0.5">
+                            <span className="material-icons-round text-[10px]">star</span> Tip
                           </span>
                         )}
                       </div>
@@ -259,7 +291,7 @@ export default function EarningsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-primary mb-1">+${trip.fare?.toFixed(2) ?? '0.00'}</p>
-                    <span className="text-[10px] text-slate-400 font-medium">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                       {trip.distance ? `${trip.distance.toFixed(1)} km` : '—'}
                     </span>
                   </div>
@@ -320,5 +352,6 @@ export default function EarningsPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

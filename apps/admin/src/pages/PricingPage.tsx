@@ -98,7 +98,7 @@ export default function PricingPage() {
       </div>
 
       {/* Pricing Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full p-12 text-center">
             <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
@@ -107,7 +107,7 @@ export default function PricingPage() {
           rules.map((rule) => (
             <div
               key={rule.id}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden"
             >
               {/* Card Header */}
               <div className="bg-gradient-to-r from-primary to-cyan-400 p-6 text-white">
@@ -116,7 +116,7 @@ export default function PricingPage() {
                     <h3 className="text-lg font-bold">{rule.vehicleType}</h3>
                     <p className="text-sm text-white/80">Pricing rules</p>
                   </div>
-                  <span className="material-symbols-outlined text-4xl opacity-50">
+                  <span className="material-symbols-outlined text-3xl opacity-70">
                     {vehicleIcons[rule.vehicleType]}
                   </span>
                 </div>

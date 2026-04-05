@@ -83,7 +83,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark overflow-hidden">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark overflow-hidden font-display">
       {/* Header with Avatar */}
       <div className="bg-gradient-to-b from-primary/20 to-transparent pt-8 pb-6 px-6">
         <div className="flex items-center gap-4">
@@ -134,7 +134,7 @@ export default function ProfilePage() {
 
       {/* Stats Cards */}
       <div className="px-6 py-6 grid grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 text-center shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 text-center shadow-sm border border-slate-100 dark:border-slate-700">
           <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">
             ทั้งหมด
           </p>
@@ -146,7 +146,7 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 text-center shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 text-center shadow-sm border border-slate-100 dark:border-slate-700">
           <p className="text-slate-500 dark:text-slate-400 text-sm mb-2">
             คะแนนเฉลี่ย
           </p>
@@ -166,7 +166,7 @@ export default function ProfilePage() {
       <div className="px-6 py-4">
         <button
           onClick={() => navigate('/history')}
-          className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3"
+          className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3 shadow-sm border border-slate-100 dark:border-slate-700"
         >
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="material-icons-round text-primary">history</span>
@@ -184,7 +184,7 @@ export default function ProfilePage() {
           </span>
         </button>
 
-        <button className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3">
+        <button className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3 shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="material-icons-round text-primary">payment</span>
           </div>
@@ -201,7 +201,7 @@ export default function ProfilePage() {
           </span>
         </button>
 
-        <button className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3">
+        <button className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3 shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="material-icons-round text-primary">
               settings
@@ -220,7 +220,7 @@ export default function ProfilePage() {
           </span>
         </button>
 
-        <button className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3">
+        <button className="w-full flex items-center gap-4 py-4 px-4 bg-white dark:bg-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors mb-3 shadow-sm border border-slate-100 dark:border-slate-700">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="material-icons-round text-primary">help</span>
           </div>
@@ -239,7 +239,7 @@ export default function ProfilePage() {
 
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-4 py-4 px-4 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-red-600 dark:text-red-400"
+          className="w-full flex items-center gap-4 py-4 px-4 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-red-600 dark:text-red-400 shadow-sm border border-red-200 dark:border-red-800"
         >
           <div className="w-10 h-10 rounded-full bg-red-200 dark:bg-red-900/40 flex items-center justify-center">
             <span className="material-icons-round">logout</span>

@@ -104,33 +104,58 @@ export default function DriversPage() {
       {/* Header */}
       <div>
         <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Driver Management
+          User &amp; Driver Management
         </h2>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Verify and manage driver accounts and documentation
+          Monitor, verify and manage platform participants in real-time.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto">
-        {[
-          { key: 'all' as const, label: 'All', count: tabCounts.all },
-          { key: 'pending' as const, label: 'Pending', count: tabCounts.pending },
-          { key: 'approved' as const, label: 'Approved', count: tabCounts.approved },
-          { key: 'rejected' as const, label: 'Rejected', count: tabCounts.rejected },
-        ].map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
-              tab === t.key
-                ? 'bg-primary text-white'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
+      {/* Filters Section */}
+      <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="relative">
+          <select
+            value={tab === 'all' ? '' : tab.toUpperCase()}
+            onChange={(e) => {
+              if (e.target.value === '') setTab('all');
+              else setTab(e.target.value.toLowerCase() as any);
+            }}
+            className="appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm font-semibold focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition-all"
           >
-            {t.label} ({t.count})
-          </button>
-        ))}
+            <option value="">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            expand_more
+          </span>
+        </div>
+        <div className="relative">
+          <select
+            className="appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm font-semibold focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition-all"
+          >
+            <option>All Types</option>
+            <option>Driver</option>
+            <option>Passenger</option>
+          </select>
+          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            expand_more
+          </span>
+        </div>
+        <div className="relative">
+          <select
+            className="appearance-none pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-sm font-semibold focus:ring-2 focus:ring-primary text-slate-900 dark:text-white transition-all"
+          >
+            <option>Rating: Any</option>
+            <option>4.5+</option>
+            <option>4.0+</option>
+            <option>3.0+</option>
+          </select>
+          <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+            star
+          </span>
+        </div>
       </div>
 
       {/* Table */}
@@ -142,22 +167,19 @@ export default function DriversPage() {
             </div>
           ) : drivers.length > 0 ? (
             <table className="w-full text-left">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                <tr>
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Name
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Vehicle
+                    Type
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
                     Rating
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
-                    Trips
+                    Total Trips
                   </th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Status
@@ -171,36 +193,35 @@ export default function DriversPage() {
                 {drivers.map((driver) => (
                   <tr
                     key={driver.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                    className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors ${
+                      driver.status === 'PENDING' ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+                    }`}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm">
+                        <div className={`size-9 rounded-full flex items-center justify-center font-bold text-sm ${
+                          driver.status === 'PENDING'
+                            ? 'bg-primary text-white'
+                            : 'bg-primary/20 text-primary'
+                        }`}>
                           {getInitials(driver.name)}
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-900 dark:text-white">
                             {driver.name}
                           </p>
+                          <p className="text-xs text-slate-500">{driver.phone}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-900 dark:text-white font-medium">
-                      {driver.phone}
-                    </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <p className="font-bold text-slate-900 dark:text-white">
-                          {driver.vehicleType}
-                        </p>
-                        <p className="text-xs text-slate-500">{driver.vehiclePlate}</p>
-                      </div>
+                      <span className="px-2.5 py-1 text-xs font-bold bg-slate-100 dark:bg-slate-800 rounded-full">
+                        Driver
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white">
-                          {driver.rating}
-                        </span>
+                        <span className="text-sm font-bold">{driver.rating}</span>
                         <span
                           className="material-symbols-outlined text-yellow-400 text-sm"
                           style={{ fontVariationSettings: "'FILL' 1" }}
@@ -209,7 +230,7 @@ export default function DriversPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-slate-900 dark:text-white">
+                    <td className="px-6 py-4 text-center font-semibold text-sm">
                       {driver.trips}
                     </td>
                     <td className="px-6 py-4">
@@ -218,7 +239,7 @@ export default function DriversPage() {
                           driver.status
                         )}`}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                        <span className={`size-1.5 rounded-full bg-current ${driver.status === 'PENDING' ? 'animate-pulse' : ''}`}></span>
                         {driver.status}
                       </span>
                     </td>
@@ -231,25 +252,21 @@ export default function DriversPage() {
                         >
                           <span className="material-symbols-outlined text-xl">visibility</span>
                         </button>
+                        <button
+                          className="p-1.5 text-slate-400 hover:text-primary transition-colors"
+                          title="Edit"
+                        >
+                          <span className="material-symbols-outlined text-xl">edit</span>
+                        </button>
                         {driver.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() =>
-                                setConfirmDialog({ driverId: driver.id, action: 'approve' })
-                              }
-                              className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600 transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() =>
-                                setConfirmDialog({ driverId: driver.id, action: 'reject' })
-                              }
-                              className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600 transition-colors"
-                            >
-                              Reject
-                            </button>
-                          </>
+                          <button
+                            onClick={() =>
+                              setConfirmDialog({ driverId: driver.id, action: 'approve' })
+                            }
+                            className="px-4 py-1.5 bg-primary text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+                          >
+                            Verify Driver
+                          </button>
                         )}
                       </div>
                     </td>

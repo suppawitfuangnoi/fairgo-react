@@ -31,7 +31,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="w-full max-w-md mx-auto h-screen bg-background-light dark:bg-background-dark overflow-hidden relative flex flex-col">
+    <div className="w-full max-w-md mx-auto h-screen bg-background-light dark:bg-background-dark overflow-hidden relative flex flex-col font-display">
       {/* Map Background */}
       <div className="absolute inset-0 z-0 w-full h-full bg-[#eef4f6] dark:bg-[#1f2937]">
         <div className="relative w-full h-full opacity-60">
@@ -57,7 +57,7 @@ export default function HomePage() {
       <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
         {/* Top Area: Header */}
         <div className="pt-14 px-5 pointer-events-auto">
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-full p-2 flex items-center gap-3 pr-4 ring-1 ring-black/5">
+          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-full p-2 flex items-center gap-3 pr-4 ring-1 ring-black/5 border border-gray-100 dark:border-gray-700">
             <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <span className="material-icons-round text-gray-800 dark:text-white">
                 menu
@@ -83,7 +83,7 @@ export default function HomePage() {
         </div>
 
         {/* Bottom Sheet Area */}
-        <div className="pointer-events-auto w-full bg-white dark:bg-gray-900 rounded-t-3xl shadow-lg pb-8 pt-2">
+        <div className="pointer-events-auto w-full bg-white dark:bg-gray-900 rounded-t-3xl shadow-lg shadow-black/10 pb-8 pt-2 border-t border-gray-100 dark:border-gray-700">
           {/* Drag Handle */}
           <div className="w-full flex justify-center pt-3 pb-1">
             <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
