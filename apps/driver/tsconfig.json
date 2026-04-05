@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "moduleResolution": "node",
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
