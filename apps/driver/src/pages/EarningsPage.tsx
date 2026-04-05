@@ -297,7 +297,7 @@ export default function EarningsPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-primary mb-1">+฿{trip.fare?.toFixed(2) ?? '0.00'}</p>
+                    <p className="text-lg font-bold text-primary mb-1">{`+\u0E3F${trip.fare?.toFixed(2) ?? '0.00'}`}</p>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                       {trip.distance ? `${trip.distance.toFixed(1)} km` : '—'}
                     </span>

@@ -185,7 +185,7 @@ export default function HistoryPage() {
                         </h4>
                         {isCompleted && (
                           <span className="text-sm font-bold text-primary shrink-0">
-                            +฿{trip.fare?.toFixed(2) ?? '0.00'}
+                            {`+\u0E3F${trip.fare?.toFixed(2) ?? '0.00'}`}
                           </span>
                         )}
                       </div>
