@@ -38,7 +38,7 @@ interface ApiAnalytics {
   };
   vehicleTypes: Array<{ type: string; count: number }>;
   paymentMethods: Array<{ method: string; count: number }>;
-  tripsByDay: Array<{ date: string; count: number; revenue?: number }>;
+  tripsByDay: Array<{ date?: string; day?: string; count: number; revenue?: number; gmv?: number }>;
   topZones: Array<{ zone: string; count: number }>;
 }
 
@@ -84,11 +84,15 @@ export default function AnalyticsPage() {
   }
 
   const tripsByDay = analytics?.tripsByDay ?? [];
-  const chartData = tripsByDay.map(t => ({
-    date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    trips: t.count,
-    revenue: t.revenue ?? 0,
-  }));
+  const chartData = tripsByDay.map(t => {
+    const rawDate = t.date || t.day;
+    const dateLabel = rawDate ? new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+    return {
+      date: dateLabel,
+      trips: t.count,
+      revenue: t.revenue ?? t.gmv ?? 0,
+    };
+  });
 
   const vehicleData = analytics?.vehicleTypes ?? [];
   const zoneData = (analytics?.topZones ?? []).slice(0, 5);
