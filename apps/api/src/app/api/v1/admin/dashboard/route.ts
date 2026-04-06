@@ -104,7 +104,8 @@ export async function GET(request: NextRequest) {
       recentActivity: recentTrips,
     });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     console.error("[ADMIN] Dashboard error:", error);
-    return errorResponse("Failed to load dashboard", 500);
+    return errorResponse(`Failed to load dashboard: ${msg}`, 500);
   }
 }

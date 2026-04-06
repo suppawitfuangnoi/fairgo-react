@@ -125,6 +125,7 @@ enum NotificationType {
   TRIP_CANCELLED         // Sent to affected party on cancellation
   DISPUTE_CREATED        // Admin notification on new dispute
   DISPUTE_RESOLVED       // Sent to reporter when admin resolves dispute
+  OFFER_EXPIRED          // Sent when a negotiation offer times out with no response
   SYSTEM_ALERT           // Platform-wide system messages
   OTP_DEBUG_INFO         // Non-production OTP debug (admin only)
   // ── Legacy (kept for backward compat) ───────────────────────────
