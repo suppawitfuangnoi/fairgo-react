@@ -137,8 +137,8 @@ enum SupportTicketPriority {
 
 model User {
   id        String     @id @default(cuid())
-  phone     String     @unique
-  email     String?    @unique
+  phone     String
+  email     String?
   name      String?
   role      UserRole
   status    UserStatus @default(ACTIVE)
@@ -159,6 +159,8 @@ model User {
   supportTickets  SupportTicket[]
   auditLogs       AuditLog[]
 
+  // เบอร์/อีเมลซ้ำข้าม role ได้ แต่ห้ามซ้ำใน role เดียวกัน
+  @@unique([phone, role])
   @@index([phone])
   @@index([role])
   @@index([status])

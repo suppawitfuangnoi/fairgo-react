@@ -89,9 +89,9 @@ export async function POST(request: NextRequest) {
     }
     const { name, phone, email, role, password } = parsed.data;
 
-    // Check phone uniqueness
-    const existing = await prisma.user.findFirst({ where: { phone } });
-    if (existing) return errorResponse("Phone number already registered", 409);
+    // Check phone uniqueness within the same role only
+    const existing = await prisma.user.findFirst({ where: { phone, role } });
+    if (existing) return errorResponse(`Phone number already registered as ${role}`, 409);
 
     const passwordHash = password ? await bcrypt.hash(password, 10) : await bcrypt.hash("FairGo@2024", 10);
 

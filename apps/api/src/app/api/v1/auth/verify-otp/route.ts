@@ -25,8 +25,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find or create user
-    let user = await prisma.user.findUnique({ where: { phone } });
+    // Determine target role
+    const targetRole = role === "DRIVER" ? "DRIVER" : "CUSTOMER";
+
+    // Find user by phone + role (same phone can exist under different roles)
+    let user = await prisma.user.findFirst({ where: { phone, role: targetRole } });
     const isNewUser = !user;
 
     if (!user) {
@@ -34,8 +37,8 @@ export async function POST(request: NextRequest) {
         data: {
           phone,
           name: name || null,
-          role: role === "DRIVER" ? "DRIVER" : "CUSTOMER",
-          ...(role === "DRIVER"
+          role: targetRole,
+          ...(targetRole === "DRIVER"
             ? { driverProfile: { create: {} } }
             : { customerProfile: { create: {} } }),
         },
