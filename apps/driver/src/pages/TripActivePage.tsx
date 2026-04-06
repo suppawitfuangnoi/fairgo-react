@@ -38,13 +38,26 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+// All 13 TripStatus values — mirrors backend trip-state-machine.ts
 type TripStatus =
   | 'DRIVER_ASSIGNED'
   | 'DRIVER_EN_ROUTE'
   | 'DRIVER_ARRIVED'
   | 'PICKUP_CONFIRMED'
   | 'IN_PROGRESS'
-  | 'COMPLETED';
+  | 'ARRIVED_DESTINATION'
+  | 'AWAITING_CASH_CONFIRMATION'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'CANCELLED_BY_PASSENGER'
+  | 'CANCELLED_BY_DRIVER'
+  | 'NO_SHOW_PASSENGER'
+  | 'NO_SHOW_DRIVER';
+
+const TERMINAL_STATUSES = new Set<TripStatus>([
+  'COMPLETED', 'CANCELLED', 'CANCELLED_BY_PASSENGER',
+  'CANCELLED_BY_DRIVER', 'NO_SHOW_PASSENGER', 'NO_SHOW_DRIVER',
+]);
 
 interface Trip {
   id: string;
@@ -98,40 +111,54 @@ function mapTrip(o: any): Trip {
   };
 }
 
-const STATUS_PROGRESS: Record<TripStatus, number> = {
-  DRIVER_ASSIGNED: 20,
-  DRIVER_EN_ROUTE: 40,
-  DRIVER_ARRIVED: 60,
-  PICKUP_CONFIRMED: 75,
-  IN_PROGRESS: 90,
-  COMPLETED: 100,
+const STATUS_PROGRESS: Partial<Record<TripStatus, number>> = {
+  DRIVER_ASSIGNED:            20,
+  DRIVER_EN_ROUTE:            40,
+  DRIVER_ARRIVED:             55,
+  PICKUP_CONFIRMED:           70,
+  IN_PROGRESS:                85,
+  ARRIVED_DESTINATION:        93,
+  AWAITING_CASH_CONFIRMATION: 97,
+  COMPLETED:                  100,
 };
 
-const STATUS_LABELS: Record<TripStatus, string> = {
-  DRIVER_ASSIGNED: 'Assigned',
-  DRIVER_EN_ROUTE: 'En Route',
-  DRIVER_ARRIVED: 'Arrived',
-  PICKUP_CONFIRMED: 'In Progress',
-  IN_PROGRESS: 'In Progress',
-  COMPLETED: 'Completed',
+const STATUS_LABELS: Partial<Record<TripStatus, string>> = {
+  DRIVER_ASSIGNED:            'กำหนดแล้ว',
+  DRIVER_EN_ROUTE:            'กำลังไปรับ',
+  DRIVER_ARRIVED:             'ถึงจุดรับแล้ว',
+  PICKUP_CONFIRMED:           'รับผู้โดยสารแล้ว',
+  IN_PROGRESS:                'กำลังเดินทาง',
+  ARRIVED_DESTINATION:        'ถึงปลายทาง',
+  AWAITING_CASH_CONFIRMATION: 'รอชำระเงินสด',
+  COMPLETED:                  'เสร็จสิ้น',
+  CANCELLED:                  'ยกเลิกแล้ว',
+  CANCELLED_BY_PASSENGER:     'ผู้โดยสารยกเลิก',
+  CANCELLED_BY_DRIVER:        'คนขับยกเลิก',
+  NO_SHOW_PASSENGER:          'ผู้โดยสารไม่มา',
+  NO_SHOW_DRIVER:             'คนขับไม่มา',
 };
 
-const STATUS_ACTIONS: Record<TripStatus, string> = {
-  DRIVER_ASSIGNED: 'นำทางไปรับผู้โดยสาร',
-  DRIVER_EN_ROUTE: 'ถึงจุดรับแล้ว',
-  DRIVER_ARRIVED: 'ผู้โดยสารขึ้นรถแล้ว',
-  PICKUP_CONFIRMED: 'ถึงปลายทางแล้ว',
-  IN_PROGRESS: 'ถึงปลายทางแล้ว',
-  COMPLETED: 'Completed',
+// Label for the primary action button for each non-terminal status
+const STATUS_ACTIONS: Partial<Record<TripStatus, string>> = {
+  DRIVER_ASSIGNED:            'นำทางไปรับผู้โดยสาร',
+  DRIVER_EN_ROUTE:            'ถึงจุดรับแล้ว',
+  DRIVER_ARRIVED:             'ผู้โดยสารขึ้นรถแล้ว',
+  PICKUP_CONFIRMED:           'เริ่มการเดินทาง',
+  IN_PROGRESS:                'ถึงปลายทางแล้ว',
+  ARRIVED_DESTINATION:        'แจ้งผู้โดยสารชำระเงิน',
+  AWAITING_CASH_CONFIRMATION: 'ได้รับเงินสดแล้ว ✓',
 };
 
-const NEXT_STATUS: Record<TripStatus, TripStatus> = {
-  DRIVER_ASSIGNED: 'DRIVER_EN_ROUTE',
-  DRIVER_EN_ROUTE: 'DRIVER_ARRIVED',
-  DRIVER_ARRIVED: 'PICKUP_CONFIRMED',
+// The next status to transition to when driver taps the primary action.
+// AWAITING_CASH_CONFIRMATION → COMPLETED is handled via confirm-payment endpoint.
+const NEXT_STATUS: Partial<Record<TripStatus, TripStatus>> = {
+  DRIVER_ASSIGNED:  'DRIVER_EN_ROUTE',
+  DRIVER_EN_ROUTE:  'DRIVER_ARRIVED',
+  DRIVER_ARRIVED:   'PICKUP_CONFIRMED',
   PICKUP_CONFIRMED: 'IN_PROGRESS',
-  IN_PROGRESS: 'COMPLETED',
-  COMPLETED: 'COMPLETED',
+  IN_PROGRESS:      'ARRIVED_DESTINATION',
+  ARRIVED_DESTINATION: 'AWAITING_CASH_CONFIRMATION',
+  // AWAITING_CASH_CONFIRMATION → handled specially (confirm-payment API)
 };
 
 export default function TripActivePage() {
@@ -163,12 +190,13 @@ export default function TripActivePage() {
       try {
         const response = await apiFetch<any>('/trips/active');
         if (response) {
+          if (TERMINAL_STATUSES.has(response.status as TripStatus)) {
+            navigate(`/trip-summary/${response.id}`, { replace: true });
+            return;
+          }
           const mapped = mapTrip(response);
           setTrip(mapped);
           tripRef.current = mapped;
-        }
-        if (response?.status === 'COMPLETED') {
-          navigate(`/trip-summary/${response.id}`, { replace: true });
         }
       } catch {
         setError('Failed to load trip');
@@ -180,13 +208,15 @@ export default function TripActivePage() {
     // Socket: real-time status updates from customer/server
     const socket = socketClient.connect();
     const onTripStatus = (update: { id: string; status: TripStatus }) => {
+      if (TERMINAL_STATUSES.has(update.status)) {
+        navigate(`/trip-summary/${update.id}`, { replace: true });
+        return;
+      }
       setTrip(prev => {
         if (!prev) return prev;
+        if (update.status === 'AWAITING_CASH_CONFIRMATION') toast.info('รอการชำระเงินสดจากผู้โดยสาร');
         return { ...prev, status: update.status };
       });
-      if (update.status === 'COMPLETED') {
-        navigate(`/trip-summary/${update.id}`, { replace: true });
-      }
     };
     socket.on(socketEvents.ON_TRIP_STATUS, onTripStatus);
 
@@ -268,7 +298,7 @@ export default function TripActivePage() {
   const progress = STATUS_PROGRESS[trip.status];
 
   const handleNextStatus = async () => {
-    if (trip.status === 'COMPLETED') {
+    if (TERMINAL_STATUSES.has(trip.status)) {
       navigate(`/trip-summary/${trip.id}`, { replace: true });
       return;
     }
@@ -277,7 +307,24 @@ export default function TripActivePage() {
     setError('');
 
     try {
+      if (trip.status === 'AWAITING_CASH_CONFIRMATION') {
+        // Cash confirmation uses its own dedicated endpoint
+        const res = await apiFetch<{ tripCompleted: boolean }>(`/trips/${trip.id}/confirm-payment`, {
+          method: 'POST',
+        });
+        if (res?.tripCompleted) {
+          toast.success('ยืนยันรับเงินสดแล้ว! การเดินทางเสร็จสิ้น');
+          setTimeout(() => navigate(`/trip-summary/${trip.id}`, { replace: true }), 1000);
+        }
+        return;
+      }
+
       const nextStatus = NEXT_STATUS[trip.status];
+      if (!nextStatus) {
+        setError('ไม่สามารถเปลี่ยนสถานะได้');
+        return;
+      }
+
       await apiFetch(`/trips/${trip.id}/status`, {
         method: 'PATCH',
         body: { status: nextStatus },
@@ -285,11 +332,10 @@ export default function TripActivePage() {
 
       setTrip({ ...trip, status: nextStatus });
 
-      if (nextStatus === 'COMPLETED') {
-        toast.success('การเดินทางเสร็จสิ้น!');
-        setTimeout(() => {
-          navigate(`/trip-summary/${trip.id}`, { replace: true });
-        }, 1000);
+      if (nextStatus === 'AWAITING_CASH_CONFIRMATION') {
+        toast.info('แจ้งผู้โดยสารชำระเงินสด ฿' + trip.fare);
+      } else if (nextStatus === 'ARRIVED_DESTINATION') {
+        toast.success('ถึงปลายทางแล้ว!');
       }
     } catch (err) {
       toast.error('ไม่สามารถอัปเดตสถานะได้');
@@ -406,9 +452,7 @@ export default function TripActivePage() {
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Status</p>
                 <p className="text-sm font-bold leading-tight">
-                  {trip.status === 'DRIVER_EN_ROUTE' || trip.status === 'DRIVER_ASSIGNED'
-                    ? `Arriving in 5 mins`
-                    : STATUS_LABELS[trip.status]}
+                  {STATUS_LABELS[trip.status] ?? trip.status}
                 </p>
               </div>
             </div>
@@ -488,18 +532,37 @@ export default function TripActivePage() {
                 </button>
               </div>
 
-              {/* Primary Status Action Button */}
-              {trip.status !== 'COMPLETED' && (
+              {/* AWAITING_CASH_CONFIRMATION — cash payment banner */}
+              {trip.status === 'AWAITING_CASH_CONFIRMATION' && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-3 mb-3 flex items-start gap-3">
+                  <span className="material-icons-round text-amber-500 text-xl mt-0.5">payments</span>
+                  <div>
+                    <p className="text-sm font-bold text-amber-800 dark:text-amber-200">รอรับเงินสดจากผู้โดยสาร</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                      จำนวน <span className="font-bold">฿{trip.fare}</span> — กดปุ่มด้านล่างเมื่อได้รับแล้ว
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Primary Status Action Button — hidden for terminal statuses */}
+              {!TERMINAL_STATUSES.has(trip.status) && STATUS_ACTIONS[trip.status] && (
                 <button
                   onClick={handleNextStatus}
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-primary text-white font-bold text-base shadow-lg shadow-primary/30 active:scale-[0.98] transition-all hover:bg-primary-dark disabled:opacity-60"
+                  className={`w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl font-bold text-base shadow-lg active:scale-[0.98] transition-all disabled:opacity-60 ${
+                    trip.status === 'AWAITING_CASH_CONFIRMATION'
+                      ? 'bg-amber-500 text-white shadow-amber-500/30 hover:bg-amber-600'
+                      : 'bg-primary text-white shadow-primary/30 hover:bg-primary-dark'
+                  }`}
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span className="material-icons-round text-xl">arrow_forward</span>
+                      <span className="material-icons-round text-xl">
+                        {trip.status === 'AWAITING_CASH_CONFIRMATION' ? 'check_circle' : 'arrow_forward'}
+                      </span>
                       {STATUS_ACTIONS[trip.status]}
                     </>
                   )}

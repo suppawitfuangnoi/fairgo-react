@@ -4,12 +4,17 @@
  * Runs on mount (and on socket reconnect) to restore the driver's session
  * after a page refresh or network drop. Checks in priority order:
  *
- * 1. Active TRIP  → navigate to /trip-active/:tripId
- * 2. Pending OFFER (mid-negotiation) → navigate to /submit-offer/:rideId
- * 3. If was online before refresh → re-emit driver:online to server
+ * 1. Active TRIP (non-terminal status)  → /trip-active/:tripId
+ * 2. Terminal TRIP status               → /trip-summary/:tripId  (no re-entry)
+ * 3. Pending OFFER (mid-negotiation)    → /submit-offer/:rideId
+ * 4. If was online before refresh       → re-emit driver:online to server
  *
  * Persists "was online" intent in localStorage so refresh doesn't silently
  * mark the driver offline.
+ *
+ * Terminal statuses (mirror of backend trip-state-machine.ts):
+ *   COMPLETED, CANCELLED, CANCELLED_BY_PASSENGER, CANCELLED_BY_DRIVER,
+ *   NO_SHOW_PASSENGER, NO_SHOW_DRIVER
  *
  * Usage: call once inside ProtectedRoute (App.tsx).
  */
@@ -18,11 +23,21 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { socketClient } from '@/lib/socket';
 
-const ACTIVE_TRIP_PAGES       = ['/trip-active', '/trip-summary', '/active-trip'];
+const ACTIVE_TRIP_PAGES        = ['/trip-active', '/trip-summary', '/active-trip'];
 const ACTIVE_NEGOTIATION_PAGES = ['/submit-offer'];
 
 const ONLINE_STORAGE_KEY  = 'fg_driver_online';
 const VEHICLE_STORAGE_KEY = 'fg_driver_vehicle_type';
+
+// Mirror of backend TERMINAL_STATUSES — keep in sync with trip-state-machine.ts
+const TERMINAL_STATUSES = new Set([
+  'COMPLETED',
+  'CANCELLED',
+  'CANCELLED_BY_PASSENGER',
+  'CANCELLED_BY_DRIVER',
+  'NO_SHOW_PASSENGER',
+  'NO_SHOW_DRIVER',
+]);
 
 // ── Persistence helpers (exported so HomePage toggle can use them) ────────────
 export const driverPersistence = {
@@ -87,11 +102,19 @@ async function restoreSession(navigate: ReturnType<typeof useNavigate>) {
   try {
     // 1. Check for active trip (highest priority)
     const trip = await apiFetch<{ id: string; status: string } | null>('/trips/active');
+
     if (trip?.id) {
       socketClient.setActiveTrip(trip.id);
-      socketClient.setOnline(); // must be online if in trip
-      console.log('[Driver useActiveSession] Restoring active trip:', trip.id);
-      navigate(`/trip-active/${trip.id}`, { replace: true });
+
+      if (TERMINAL_STATUSES.has(trip.status)) {
+        // Trip finished — send driver to summary, not back into active trip UI
+        console.log('[Driver useActiveSession] Restoring terminal trip (summary):', trip.id, trip.status);
+        navigate(`/trip-summary/${trip.id}`, { replace: true });
+      } else {
+        socketClient.setOnline(); // must be online if in active trip
+        console.log('[Driver useActiveSession] Restoring active trip:', trip.id, trip.status);
+        navigate(`/trip-active/${trip.id}`, { replace: true });
+      }
       return;
     }
 

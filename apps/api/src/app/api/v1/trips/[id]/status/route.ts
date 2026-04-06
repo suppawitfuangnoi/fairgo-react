@@ -1,3 +1,19 @@
+/**
+ * PATCH /api/v1/trips/:id/status
+ *
+ * Single endpoint that drives all trip state transitions.
+ * All validation is delegated to the central state machine
+ * (src/lib/trip-state-machine.ts) so role rules and allowed
+ * transitions can never diverge between routes.
+ *
+ * Race-safety:
+ *   The status column is updated with an atomic
+ *   UPDATE … WHERE id = $id AND status = $current RETURNING id
+ *   If the RETURNING set is empty another request changed the
+ *   status first.  We re-fetch and return 200 if it is now the
+ *   desired value (idempotent retry), or 409 if something else
+ *   raced us to it.
+ */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/middleware/auth";
@@ -7,69 +23,31 @@ import { updateTripStatusSchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToRoom, emitToUser } from "@/lib/socket";
 import { Notif } from "@/lib/notifications";
+import {
+  validateTransition,
+  requiresNote,
+  isCancellation,
+  ActorRole,
+} from "@/lib/trip-state-machine";
 
-// Full state machine including new statuses
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  DRIVER_ASSIGNED: ["DRIVER_EN_ROUTE", "CANCELLED", "CANCELLED_BY_DRIVER"],
-  DRIVER_EN_ROUTE: ["DRIVER_ARRIVED", "CANCELLED", "CANCELLED_BY_DRIVER"],
-  DRIVER_ARRIVED: [
-    "PICKUP_CONFIRMED",
-    "NO_SHOW_PASSENGER",
-    "CANCELLED",
-    "CANCELLED_BY_DRIVER",
-  ],
-  PICKUP_CONFIRMED: ["IN_PROGRESS", "CANCELLED"],
-  IN_PROGRESS: ["ARRIVED_DESTINATION", "COMPLETED", "CANCELLED"],
-  ARRIVED_DESTINATION: ["AWAITING_CASH_CONFIRMATION", "COMPLETED"],
-  AWAITING_CASH_CONFIRMATION: ["COMPLETED"],
-  COMPLETED: [],
-  CANCELLED: [],
-  CANCELLED_BY_PASSENGER: [],
-  CANCELLED_BY_DRIVER: [],
-  NO_SHOW_PASSENGER: [],
-  NO_SHOW_DRIVER: [],
-};
+// ── Shared log helper (also used by confirm-payment) ──────────────────────────
 
-// Statuses only driver can set
-const DRIVER_ONLY_STATUSES = [
-  "DRIVER_EN_ROUTE",
-  "DRIVER_ARRIVED",
-  "PICKUP_CONFIRMED",
-  "IN_PROGRESS",
-  "ARRIVED_DESTINATION",
-  "AWAITING_CASH_CONFIRMATION",
-  "COMPLETED",
-  "CANCELLED_BY_DRIVER",
-  "NO_SHOW_PASSENGER",
-];
-
-// Statuses only customer can set
-const CUSTOMER_ONLY_STATUSES = ["CANCELLED", "CANCELLED_BY_PASSENGER", "NO_SHOW_DRIVER"];
-
-// Terminal statuses (no transitions allowed out)
-const TERMINAL_STATUSES = [
-  "COMPLETED",
-  "CANCELLED",
-  "CANCELLED_BY_PASSENGER",
-  "CANCELLED_BY_DRIVER",
-  "NO_SHOW_PASSENGER",
-  "NO_SHOW_DRIVER",
-];
-
-async function logStatusTransition(
+export async function logStatusTransition(
   tripId: string,
   fromStatus: string,
   toStatus: string,
   changedByType: string,
   changedById?: string,
   note?: string
-) {
+): Promise<void> {
   const id = `tsl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   await prisma.$executeRaw`
     INSERT INTO trip_status_logs (id, "tripId", "fromStatus", "toStatus", "changedByType", "changedById", note, "createdAt")
     VALUES (${id}, ${tripId}, ${fromStatus}, ${toStatus}, ${changedByType}, ${changedById ?? null}, ${note ?? null}, NOW())
   `;
 }
+
+// ── Route handler ──────────────────────────────────────────────────────────────
 
 export async function PATCH(
   request: NextRequest,
@@ -84,6 +62,9 @@ export async function PATCH(
     const result = await validateBody(request, updateTripStatusSchema);
     if ("error" in result) return result.error;
 
+    const { status: newStatus, cancelReason, note } = result.data;
+
+    // ── 1. Load trip ───────────────────────────────────────────────────────
     const trip = await prisma.trip.findUnique({
       where: { id },
       include: {
@@ -91,63 +72,89 @@ export async function PATCH(
         rideRequest: { include: { customerProfile: true } },
       },
     });
-
     if (!trip) return errorResponse("Trip not found", 404);
 
-    const newStatus = result.data.status as string;
+    const currentStatus = trip.status as string;
 
-    // Determine who is acting
-    const isDriver = trip.driverProfile.userId === user.userId;
+    // ── 2. Determine actor role ────────────────────────────────────────────
+    const isDriver   = trip.driverProfile.userId === user.userId;
     const isCustomer = trip.rideRequest.customerProfile.userId === user.userId;
-    const isAdmin = user.role === "ADMIN";
+    const isAdmin    = user.role === "ADMIN";
 
     if (!isDriver && !isCustomer && !isAdmin) {
       return errorResponse("Not authorized to update this trip", 403);
     }
 
-    // Terminal status check
-    if (TERMINAL_STATUSES.includes(trip.status as string)) {
-      return errorResponse(`Trip is already in terminal status: ${trip.status}`, 422);
+    const actorRole: ActorRole = isAdmin ? "ADMIN" : isDriver ? "DRIVER" : "CUSTOMER";
+
+    // ── 3. Idempotent same-status check ────────────────────────────────────
+    if (currentStatus === newStatus) {
+      return successResponse(trip, `Trip is already in status '${newStatus}'`);
     }
 
-    // Role-based transition checks
-    if (!isAdmin) {
-      if (isDriver && CUSTOMER_ONLY_STATUSES.includes(newStatus)) {
-        return errorResponse(
-          "This status transition can only be performed by the passenger",
-          403
-        );
-      }
-      if (isCustomer && DRIVER_ONLY_STATUSES.includes(newStatus)) {
-        return errorResponse("Passengers can only cancel a trip", 403);
-      }
+    // ── 4. Central state machine validation (role + transition) ───────────
+    const validation = validateTransition(currentStatus, newStatus, actorRole);
+    if (!validation.ok) {
+      return errorResponse(validation.message, validation.httpStatus);
     }
 
-    // Validate state machine
-    const validNextStatuses = VALID_TRANSITIONS[trip.status as string] ?? [];
-    if (!validNextStatuses.includes(newStatus)) {
+    // ── 5. Note required check ────────────────────────────────────────────
+    const noteValue = note || cancelReason;
+    if (requiresNote(currentStatus, newStatus) && !noteValue) {
       return errorResponse(
-        `Invalid transition: ${trip.status} → ${newStatus}. Allowed: ${validNextStatuses.join(", ")}`,
+        `A reason/note is required for the transition ${currentStatus} → ${newStatus}`,
         422
       );
     }
 
-    const updateData: Record<string, unknown> = {};
+    // ── 6. Atomic status update (race-safe) ────────────────────────────────
+    // UPDATE WHERE current status matches — returns row only if we won the race
+    const updated = await prisma.$queryRaw<{ id: string }[]>`
+      UPDATE trips
+      SET    status     = ${newStatus}::"TripStatus",
+             "updatedAt" = NOW()
+      WHERE  id         = ${id}
+        AND  status     = ${currentStatus}::"TripStatus"
+      RETURNING id
+    `;
+
+    if (updated.length === 0) {
+      // Race: someone else changed status between our fetch and update
+      const refetched = await prisma.trip.findUnique({ where: { id }, select: { status: true } });
+      if (refetched?.status === newStatus) {
+        // Idempotent — the other request also targeted our desired state
+        const fullTrip = await prisma.trip.findUnique({
+          where: { id },
+          include: {
+            driverProfile: { include: { user: { select: { name: true, avatarUrl: true } } } },
+            payment: true,
+          },
+        });
+        return successResponse(fullTrip, `Trip is already in status '${newStatus}'`);
+      }
+      return errorResponse(
+        `Trip status changed concurrently (now '${refetched?.status ?? "unknown"}'). Please retry.`,
+        409
+      );
+    }
+
+    // ── 7. Post-transition side effects ────────────────────────────────────
+    // (Only executed once the atomic update has confirmed we own this transition)
 
     if (newStatus === "IN_PROGRESS") {
-      updateData.startedAt = new Date();
-    } else if (newStatus === "COMPLETED") {
-      updateData.completedAt = new Date();
+      await prisma.$executeRaw`UPDATE trips SET "startedAt" = NOW() WHERE id = ${id}`;
+    }
 
-      // Create payment record if not already created
-      const existingPayment = await prisma.payment.findUnique({ where: { tripId: trip.id } });
+    if (newStatus === "COMPLETED") {
+      await prisma.$executeRaw`UPDATE trips SET "completedAt" = NOW() WHERE id = ${id}`;
+
+      const existingPayment = await prisma.payment.findUnique({ where: { tripId: id } });
       if (!existingPayment) {
-        const commission =
-          Math.round(trip.lockedFare * trip.driverProfile.commissionRate * 100) / 100;
+        const commission    = Math.round(trip.lockedFare * trip.driverProfile.commissionRate * 100) / 100;
         const driverEarning = Math.round((trip.lockedFare - commission) * 100) / 100;
         await prisma.payment.create({
           data: {
-            tripId: trip.id,
+            tripId: id,
             amount: trip.lockedFare,
             commission,
             driverEarning,
@@ -159,26 +166,26 @@ export async function PATCH(
         });
       }
 
-      // Update trip counts
-      await prisma.driverProfile.update({
-        where: { id: trip.driverProfileId },
-        data: { totalTrips: { increment: 1 } },
-      });
-      await prisma.customerProfile.update({
-        where: { id: trip.rideRequest.customerProfileId },
-        data: { totalTrips: { increment: 1 } },
-      });
-    } else if (newStatus === "AWAITING_CASH_CONFIRMATION") {
-      // Driver signals they arrived at destination and will confirm cash
-      // Create a pending payment record so everything is ready
-      const existingPayment = await prisma.payment.findUnique({ where: { tripId: trip.id } });
+      await Promise.all([
+        prisma.driverProfile.update({
+          where: { id: trip.driverProfileId },
+          data: { totalTrips: { increment: 1 } },
+        }),
+        prisma.customerProfile.update({
+          where: { id: trip.rideRequest.customerProfileId },
+          data: { totalTrips: { increment: 1 } },
+        }),
+      ]);
+    }
+
+    if (newStatus === "AWAITING_CASH_CONFIRMATION") {
+      const existingPayment = await prisma.payment.findUnique({ where: { tripId: id } });
       if (!existingPayment) {
-        const commission =
-          Math.round(trip.lockedFare * trip.driverProfile.commissionRate * 100) / 100;
+        const commission    = Math.round(trip.lockedFare * trip.driverProfile.commissionRate * 100) / 100;
         const driverEarning = Math.round((trip.lockedFare - commission) * 100) / 100;
         await prisma.payment.create({
           data: {
-            tripId: trip.id,
+            tripId: id,
             amount: trip.lockedFare,
             commission,
             driverEarning,
@@ -187,86 +194,49 @@ export async function PATCH(
           },
         });
       }
-    } else if (
-      ["CANCELLED", "CANCELLED_BY_PASSENGER", "CANCELLED_BY_DRIVER"].includes(newStatus)
-    ) {
-      updateData.cancelledAt = new Date();
-      updateData.cancelledBy = user.userId;
-      updateData.cancelReason = result.data.cancelReason || "Cancelled";
-    } else if (newStatus === "NO_SHOW_PASSENGER") {
-      updateData.cancelledAt = new Date();
-      updateData.cancelReason = "Passenger no-show";
-    } else if (newStatus === "NO_SHOW_DRIVER") {
-      updateData.cancelledAt = new Date();
-      updateData.cancelReason = "Driver no-show";
     }
 
-    // Use raw SQL for new status enum values to avoid stale Prisma client enum issues
-    const terminalNewStatuses = [
-      "ARRIVED_DESTINATION",
-      "AWAITING_CASH_CONFIRMATION",
-      "CANCELLED_BY_PASSENGER",
-      "CANCELLED_BY_DRIVER",
-      "NO_SHOW_PASSENGER",
-      "NO_SHOW_DRIVER",
-    ];
-
-    let updated;
-    if (terminalNewStatuses.includes(newStatus)) {
-      // Use executeRaw to set the new enum value, then fetch the updated record
-      await prisma.$executeRaw`UPDATE trips SET status = ${newStatus}::"TripStatus", "updatedAt" = NOW() WHERE id = ${id}`;
-      if (updateData.cancelledAt) {
-        await prisma.$executeRaw`UPDATE trips SET "cancelledAt" = NOW(), "cancelledBy" = ${user.userId}, "cancelReason" = ${updateData.cancelReason as string ?? "Cancelled"} WHERE id = ${id}`;
-      }
-      updated = await prisma.trip.findUnique({
-        where: { id },
-        include: {
-          driverProfile: {
-            include: { user: { select: { name: true, avatarUrl: true } } },
-          },
-          payment: true,
-        },
-      });
-    } else {
-      updateData.status = newStatus;
-      updated = await prisma.trip.update({
-        where: { id },
-        data: updateData,
-        include: {
-          driverProfile: {
-            include: { user: { select: { name: true, avatarUrl: true } } },
-          },
-          payment: true,
-        },
-      });
+    if (isCancellation(newStatus)) {
+      await prisma.$executeRaw`
+        UPDATE trips
+        SET    "cancelledAt"  = NOW(),
+               "cancelledBy"  = ${user.userId},
+               "cancelReason" = ${noteValue ?? "Cancelled"}
+        WHERE  id = ${id}
+      `;
     }
 
-    // Log the status transition
-    const changedByType = isAdmin ? "ADMIN" : isDriver ? "DRIVER" : "CUSTOMER";
-    await logStatusTransition(
-      id,
-      trip.status as string,
-      newStatus,
-      changedByType,
-      user.userId,
-      result.data.cancelReason
-    );
+    // ── 8. Fetch updated trip for response ─────────────────────────────────
+    const updatedTrip = await prisma.trip.findUnique({
+      where: { id },
+      include: {
+        driverProfile: {
+          include: { user: { select: { name: true, avatarUrl: true } } },
+        },
+        payment: true,
+      },
+    });
 
-    // Broadcast status update
-    emitToRoom(`trip:${id}`, "trip:status_update", updated);
-    emitToRoom("admin:monitor", "trip:status_update", updated);
+    // ── 9. Audit log ───────────────────────────────────────────────────────
+    await logStatusTransition(id, currentStatus, newStatus, actorRole, user.userId, noteValue)
+      .catch((e) => console.error("[TRIPS] Log error:", e)); // best-effort
+
+    // ── 10. Broadcast & push notifications ────────────────────────────────
+    emitToRoom(`trip:${id}`, "trip:status_update", updatedTrip);
+    emitToRoom("admin:monitor", "trip:status_update", updatedTrip);
 
     const customerUserId = trip.rideRequest.customerProfile.userId;
     const driverUserId   = trip.driverProfile.user.id;
     const driverName     = trip.driverProfile.user.name ?? "Driver";
 
-    // Notify the other party + persist to DB for recovery
-    if (["CANCELLED", "CANCELLED_BY_DRIVER", "NO_SHOW_PASSENGER"].includes(newStatus) && isDriver) {
-      emitToUser(customerUserId, "trip:cancelled", { tripId: id, cancelledBy: "driver", status: newStatus, reason: result.data.cancelReason });
-      await Notif.tripCancelled(customerUserId, id, "driver", result.data.cancelReason);
-    } else if (["CANCELLED", "CANCELLED_BY_PASSENGER", "NO_SHOW_DRIVER"].includes(newStatus) && isCustomer) {
-      emitToUser(driverUserId, "trip:cancelled", { tripId: id, cancelledBy: "customer", status: newStatus, reason: result.data.cancelReason });
-      await Notif.tripCancelled(driverUserId, id, "customer", result.data.cancelReason);
+    if (isCancellation(newStatus)) {
+      if (isDriver || isAdmin) {
+        emitToUser(customerUserId, "trip:cancelled", { tripId: id, cancelledBy: actorRole, status: newStatus, reason: noteValue });
+        await Notif.tripCancelled(customerUserId, id, "driver", noteValue);
+      } else {
+        emitToUser(driverUserId, "trip:cancelled", { tripId: id, cancelledBy: actorRole, status: newStatus, reason: noteValue });
+        await Notif.tripCancelled(driverUserId, id, "customer", noteValue);
+      }
     } else if (newStatus === "DRIVER_EN_ROUTE") {
       emitToUser(customerUserId, "trip:driver_en_route", { tripId: id });
       await Notif.driverEnRoute(customerUserId, id, driverName);
@@ -280,14 +250,14 @@ export async function PATCH(
       emitToUser(customerUserId, "trip:awaiting_payment", { tripId: id, lockedFare: trip.lockedFare });
       await Notif.awaitingCashPayment(customerUserId, id, trip.lockedFare);
     } else if (newStatus === "COMPLETED") {
-      emitToUser(customerUserId, "trip:completed", { tripId: id, lockedFare: trip.lockedFare });
+      emitToRoom(`trip:${id}`, "trip:completed", { tripId: id, lockedFare: trip.lockedFare });
       await Promise.all([
         Notif.tripCompleted(customerUserId, id, trip.lockedFare, false),
-        Notif.tripCompleted(driverUserId, id, trip.lockedFare, true),
+        Notif.tripCompleted(driverUserId,   id, trip.lockedFare, true),
       ]);
     }
 
-    return successResponse(updated, `Trip status updated to ${newStatus}`);
+    return successResponse(updatedTrip, `Trip status updated to ${newStatus}`);
   } catch (error) {
     console.error("[TRIPS] Update status error:", error);
     return errorResponse("Failed to update trip status", 500);

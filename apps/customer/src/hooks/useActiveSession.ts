@@ -4,10 +4,18 @@
  * Runs on mount (and on every reconnect) to restore the customer's session
  * after a page refresh or network drop.
  *
- * Logic:
- * 1. Fetch /trips/active  → if found, navigate to /trip-active/:tripId
- * 2. If no active trip, fetch /rides/active → if found, navigate to /matching?rideId=...
- * 3. Register the relevant room on socketClient so reconnects rejoin correctly
+ * Routing logic (status-aware):
+ *   ACTIVE trip statuses  → /trip-active/:tripId
+ *   TERMINAL trip statuses → /trip-summary/:tripId  (avoid re-entering trip screen)
+ *   Active ride request   → /matching?rideId=...
+ *
+ * Active statuses:
+ *   DRIVER_ASSIGNED, DRIVER_EN_ROUTE, DRIVER_ARRIVED, PICKUP_CONFIRMED,
+ *   IN_PROGRESS, ARRIVED_DESTINATION, AWAITING_CASH_CONFIRMATION
+ *
+ * Terminal statuses:
+ *   COMPLETED, CANCELLED, CANCELLED_BY_PASSENGER, CANCELLED_BY_DRIVER,
+ *   NO_SHOW_PASSENGER, NO_SHOW_DRIVER
  *
  * Usage: Call this hook once in the root authenticated layout (e.g. App.tsx or
  * a <ProtectedRoute> wrapper). It is intentionally idempotent — safe to run
@@ -21,6 +29,16 @@ import { socketClient } from '@/lib/socket';
 // Pages that should NOT trigger auto-redirect (user is already on the right screen)
 const ACTIVE_TRIP_PAGES  = ['/trip-active', '/trip-summary'];
 const ACTIVE_RIDE_PAGES  = ['/matching', '/negotiation'];
+
+// Mirror of backend TERMINAL_STATUSES — keep in sync with trip-state-machine.ts
+const TERMINAL_STATUSES = new Set([
+  'COMPLETED',
+  'CANCELLED',
+  'CANCELLED_BY_PASSENGER',
+  'CANCELLED_BY_DRIVER',
+  'NO_SHOW_PASSENGER',
+  'NO_SHOW_DRIVER',
+]);
 
 export function useActiveSession() {
   const navigate  = useNavigate();
@@ -73,8 +91,16 @@ async function restoreSession(navigate: ReturnType<typeof useNavigate>) {
 
     if (tripRes?.id) {
       socketClient.setActiveTrip(tripRes.id);
-      console.log('[useActiveSession] Restoring active trip:', tripRes.id);
-      navigate(`/trip-active/${tripRes.id}`, { replace: true });
+
+      if (TERMINAL_STATUSES.has(tripRes.status)) {
+        // Trip is over — navigate to summary screen, not the active trip UI
+        console.log('[useActiveSession] Restoring terminal trip (summary):', tripRes.id, tripRes.status);
+        navigate(`/trip-summary/${tripRes.id}`, { replace: true });
+      } else {
+        // Trip is ongoing — restore active trip UI
+        console.log('[useActiveSession] Restoring active trip:', tripRes.id, tripRes.status);
+        navigate(`/trip-active/${tripRes.id}`, { replace: true });
+      }
       return;
     }
 

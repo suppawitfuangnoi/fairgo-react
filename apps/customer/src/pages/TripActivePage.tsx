@@ -7,9 +7,35 @@ import { IMG } from '@/lib/assets';
 import GoogleMap from '@/components/GoogleMap';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
+// All 13 TripStatus values — mirrors backend trip-state-machine.ts
+type TripStatus =
+  | 'DRIVER_ASSIGNED'
+  | 'DRIVER_EN_ROUTE'
+  | 'DRIVER_ARRIVED'
+  | 'PICKUP_CONFIRMED'
+  | 'IN_PROGRESS'
+  | 'ARRIVED_DESTINATION'
+  | 'AWAITING_CASH_CONFIRMATION'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'CANCELLED_BY_PASSENGER'
+  | 'CANCELLED_BY_DRIVER'
+  | 'NO_SHOW_PASSENGER'
+  | 'NO_SHOW_DRIVER';
+
+const TERMINAL_STATUSES = new Set<TripStatus>([
+  'COMPLETED', 'CANCELLED', 'CANCELLED_BY_PASSENGER',
+  'CANCELLED_BY_DRIVER', 'NO_SHOW_PASSENGER', 'NO_SHOW_DRIVER',
+]);
+
+// Statuses where the passenger can still cancel
+const CANCELLABLE_STATUSES = new Set<TripStatus>([
+  'DRIVER_ASSIGNED', 'DRIVER_EN_ROUTE', 'DRIVER_ARRIVED',
+]);
+
 interface ActiveTrip {
   id: string;
-  status: 'DRIVER_EN_ROUTE' | 'DRIVER_ARRIVED' | 'IN_PROGRESS' | 'COMPLETED';
+  status: TripStatus;
   driverName: string;
   driverRating: number;
   driverPhone: string;
@@ -101,7 +127,8 @@ export default function TripActivePage() {
     const fetchTrip = async () => {
       try {
         const response = await apiFetch<any>('/trips/active');
-        if (response.status === 'COMPLETED') {
+        if (TERMINAL_STATUSES.has(response.status as TripStatus)) {
+          // Any terminal status → summary screen
           navigate(`/trip-summary/${response.id}`, { replace: true });
         } else {
           setTrip(mapTrip(response));
@@ -119,13 +146,23 @@ export default function TripActivePage() {
 
     // Trip status updates
     const onTripStatus = (update: { id: string; status: string; estimatedArrival?: number }) => {
+      const newStatus = update.status as TripStatus;
+      if (TERMINAL_STATUSES.has(newStatus)) {
+        // Navigate away on any terminal transition
+        setTrip(prev => {
+          if (prev) navigate(`/trip-summary/${prev.id}`, { replace: true });
+          return prev;
+        });
+        return;
+      }
       setTrip(prev => {
         if (!prev) return prev;
-        const updated = { ...prev, status: update.status as ActiveTrip['status'], estimatedArrival: update.estimatedArrival ?? prev.estimatedArrival };
-        if (update.status === 'COMPLETED') navigate(`/trip-summary/${prev.id}`, { replace: true });
-        if (update.status === 'DRIVER_ARRIVED') toast.success('คนขับมาถึงแล้ว!');
-        if (update.status === 'IN_PROGRESS') toast.info('เริ่มการเดินทางแล้ว');
-        return updated;
+        if (newStatus === 'DRIVER_ARRIVED') toast.success('คนขับมาถึงแล้ว!');
+        if (newStatus === 'PICKUP_CONFIRMED') toast.info('คนขับรับผู้โดยสารแล้ว');
+        if (newStatus === 'IN_PROGRESS') toast.info('เริ่มการเดินทางแล้ว');
+        if (newStatus === 'ARRIVED_DESTINATION') toast.success('ถึงปลายทางแล้ว!');
+        if (newStatus === 'AWAITING_CASH_CONFIRMATION') toast.info('กรุณาชำระเงินสดให้คนขับ');
+        return { ...prev, status: newStatus, estimatedArrival: update.estimatedArrival ?? prev.estimatedArrival };
       });
     };
 
@@ -202,12 +239,22 @@ export default function TripActivePage() {
     socketClient.emit('chat:message', { tripId: trip.id, text, fromRole: 'CUSTOMER' });
   };
 
-  const getStatusText = (status?: string) => {
-    switch (status) {
-      case 'DRIVER_EN_ROUTE': return 'คนขับกำลังมา';
-      case 'DRIVER_ARRIVED': return 'คนขับมาถึงแล้ว!';
-      case 'IN_PROGRESS': return 'กำลังเดินทาง';
-      default: return 'กำลังเตรียมการ';
+  const getStatusText = (status?: string): string => {
+    switch (status as TripStatus) {
+      case 'DRIVER_ASSIGNED':             return 'กำหนดคนขับแล้ว';
+      case 'DRIVER_EN_ROUTE':             return 'คนขับกำลังมา';
+      case 'DRIVER_ARRIVED':              return 'คนขับมาถึงแล้ว!';
+      case 'PICKUP_CONFIRMED':            return 'รับผู้โดยสารแล้ว';
+      case 'IN_PROGRESS':                 return 'กำลังเดินทาง';
+      case 'ARRIVED_DESTINATION':         return 'ถึงปลายทางแล้ว';
+      case 'AWAITING_CASH_CONFIRMATION':  return 'รอยืนยันชำระเงินสด';
+      case 'COMPLETED':                   return 'เสร็จสิ้น';
+      case 'CANCELLED':
+      case 'CANCELLED_BY_PASSENGER':
+      case 'CANCELLED_BY_DRIVER':         return 'ยกเลิกแล้ว';
+      case 'NO_SHOW_PASSENGER':           return 'ผู้โดยสารไม่มา';
+      case 'NO_SHOW_DRIVER':              return 'คนขับไม่มา';
+      default:                            return 'กำลังเตรียมการ';
     }
   };
 
@@ -399,7 +446,29 @@ export default function TripActivePage() {
             </a>
           </div>
 
-          {trip.status === 'DRIVER_EN_ROUTE' && (
+          {/* AWAITING_CASH_CONFIRMATION — prompt passenger to pay driver */}
+          {trip.status === 'AWAITING_CASH_CONFIRMATION' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-1 flex items-start gap-3">
+              <span className="material-icons-round text-amber-500 text-2xl mt-0.5">payments</span>
+              <div>
+                <p className="text-sm font-bold text-amber-800">กรุณาชำระเงินสด</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  กรุณาชำระเงินสด <span className="font-bold">฿{trip.fare}</span> ให้กับคนขับ
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ARRIVED_DESTINATION — trip almost over */}
+          {trip.status === 'ARRIVED_DESTINATION' && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-1 flex items-center gap-3">
+              <span className="material-icons-round text-emerald-500">flag</span>
+              <p className="text-sm font-semibold text-emerald-700">ถึงปลายทางแล้ว กำลังดำเนินการชำระเงิน</p>
+            </div>
+          )}
+
+          {/* Cancel only available before pickup confirmed */}
+          {CANCELLABLE_STATUSES.has(trip.status) && (
             <button
               onClick={handleCancelTrip}
               className="w-full py-3 border border-red-400 text-red-500 font-semibold rounded-xl hover:bg-red-50 transition"
