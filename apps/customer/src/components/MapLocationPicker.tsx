@@ -142,12 +142,11 @@ export default function MapLocationPicker({
         </div>
 
         <button
-          onClick={() => onConfirm(center, address)}
-          disabled={geocoding}
-          className="w-full bg-primary hover:bg-[#0fbddf] disabled:opacity-50 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/25 active:translate-y-0.5 transition-all flex items-center justify-center gap-2"
+          onClick={() => onConfirm(center, address || `${center.lat.toFixed(5)}, ${center.lng.toFixed(5)}`)}
+          className="w-full bg-primary hover:bg-[#0fbddf] text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/25 active:translate-y-0.5 transition-all flex items-center justify-center gap-2"
         >
           <span className="material-icons-round text-sm">check_circle</span>
-          ยืนยันตำแหน่งนี้
+          {geocoding ? 'ยืนยันตำแหน่งนี้ (กำลังโหลดที่อยู่...)' : 'ยืนยันตำแหน่งนี้'}
         </button>
       </div>
     </div>

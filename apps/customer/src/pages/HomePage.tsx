@@ -18,6 +18,7 @@ export default function HomePage() {
   const { position } = useGeolocation();
   const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Check for active trip on mount and redirect if found
   useEffect(() => {
@@ -77,7 +78,10 @@ export default function HomePage() {
         {/* Top Area: Header */}
         <div className="pt-14 px-5 pointer-events-auto">
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-full p-2 flex items-center gap-3 pr-4 ring-1 ring-black/5 border border-gray-100 dark:border-gray-700">
-            <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
               <span className="material-icons-round text-gray-800 dark:text-white">
                 menu
               </span>
@@ -93,9 +97,12 @@ export default function HomePage() {
                 </span>
               </button>
             </div>
-            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm">
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-9 h-9 rounded-full overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm"
+            >
               <img src={IMG.userAvatar} className="w-full h-full object-cover rounded-full" alt="avatar" />
-            </div>
+            </button>
           </div>
         </div>
 
@@ -232,6 +239,78 @@ export default function HomePage() {
           <div className="h-6 w-full"></div>
         </div>
       </div>
+
+      {/* Side Drawer Overlay */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setDrawerOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div className="relative w-72 max-w-[80vw] bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gradient-to-br from-primary/20 to-transparent px-6 pt-14 pb-6">
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300"
+              >
+                <span className="material-icons-round text-lg">close</span>
+              </button>
+              <div className="w-16 h-16 rounded-full overflow-hidden border-3 border-white shadow-md mb-3">
+                <img src={IMG.userAvatar} className="w-full h-full object-cover" alt="avatar" />
+              </div>
+              <p className="font-bold text-gray-900 dark:text-white text-lg">บัญชีของฉัน</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">FairGo Customer</p>
+            </div>
+
+            {/* Menu Items */}
+            <div className="flex-1 px-4 py-4 space-y-1">
+              {[
+                { icon: 'person', label: 'โปรไฟล์ของฉัน', path: '/profile' },
+                { icon: 'directions_car', label: 'เรียกรถ', path: '/ride-request' },
+                { icon: 'history', label: 'ประวัติการเดินทาง', path: '/history' },
+                { icon: 'local_offer', label: 'โปรโมชั่นและส่วนลด', path: '/ride-request' },
+                { icon: 'payment', label: 'วิธีการชำระเงิน', path: '/profile' },
+                { icon: 'notifications', label: 'การแจ้งเตือน', path: '/profile' },
+                { icon: 'help_outline', label: 'ความช่วยเหลือ', path: '/profile' },
+                { icon: 'settings', label: 'ตั้งค่า', path: '/profile' },
+              ].map(({ icon, label, path }) => (
+                <button
+                  key={label}
+                  onClick={() => { setDrawerOpen(false); navigate(path); }}
+                  className="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                >
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                    <span className="material-icons-round text-sm">{icon}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{label}</span>
+                  <span className="material-icons-round text-gray-300 dark:text-gray-600 text-sm ml-auto">chevron_right</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-6 border-t border-gray-100 dark:border-gray-800">
+              <button
+                onClick={() => {
+                  localStorage.removeItem('fg_access_token');
+                  localStorage.removeItem('fg_refresh_token');
+                  localStorage.removeItem('fg_user');
+                  setDrawerOpen(false);
+                  navigate('/login', { replace: true });
+                }}
+                className="w-full flex items-center gap-3 py-3 px-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-semibold text-sm hover:bg-red-100 transition-colors"
+              >
+                <span className="material-icons-round">logout</span>
+                ออกจากระบบ
+              </button>
+              <p className="text-center text-xs text-gray-400 mt-4">FAIRGO v2.0</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

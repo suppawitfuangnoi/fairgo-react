@@ -35,7 +35,7 @@ export default function OnboardingPage() {
   const isLastSlide = currentSlide === slides.length - 1;
 
   return (
-    <div className="relative w-full max-w-md h-[844px] bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden sm:rounded-[3rem] flex flex-col mx-auto">
+    <div className="relative w-full max-w-md min-h-screen bg-background-light dark:bg-background-dark shadow-2xl overflow-hidden sm:rounded-[3rem] flex flex-col mx-auto" style={{ minHeight: '100dvh' }}>
       {/* Status Bar Area (Visual Only) */}
       <div className="absolute top-0 w-full h-12 flex justify-between items-center px-6 z-20 text-text-main dark:text-white">
         <span className="text-sm font-semibold">9:41</span>
@@ -48,7 +48,10 @@ export default function OnboardingPage() {
 
       {/* Skip Button */}
       <div className="absolute top-14 right-6 z-20">
-        <button className="text-text-muted hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors text-sm font-medium px-3 py-1 rounded-full">
+        <button
+          onClick={() => navigate('/login', { replace: true })}
+          className="text-text-muted hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors text-sm font-medium px-3 py-1 rounded-full hover:bg-primary/10"
+        >
           ข้าม (Skip)
         </button>
       </div>

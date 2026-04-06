@@ -36,6 +36,10 @@ interface RideRequest {
   passengerTrips: number;
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLat?: number;
+  pickupLng?: number;
+  dropoffLat?: number;
+  dropoffLng?: number;
   /** Trip distance: pickup → dropoff */
   tripDistance: string;
   /** Distance from driver's current location → pickup */
@@ -88,6 +92,10 @@ export default function HomePage() {
           passengerTrips: r._count?.offers ?? 0,
           pickupAddress: r.pickupAddress,
           dropoffAddress: r.dropoffAddress,
+          pickupLat: r.pickupLatitude ? Number(r.pickupLatitude) : undefined,
+          pickupLng: r.pickupLongitude ? Number(r.pickupLongitude) : undefined,
+          dropoffLat: r.dropoffLatitude ? Number(r.dropoffLatitude) : undefined,
+          dropoffLng: r.dropoffLongitude ? Number(r.dropoffLongitude) : undefined,
           tripDistance: r.estimatedDistance ? `${Number(r.estimatedDistance).toFixed(1)} km` : '—',
           driverDistance: r.distanceFromDriver != null ? `${Number(r.distanceFromDriver).toFixed(1)} km` : '— km',
           duration: r.estimatedDuration ? `${r.estimatedDuration} นาที` : '—',
@@ -189,20 +197,33 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-white dark:bg-surface-dark px-3 py-1.5 rounded-full shadow-sm border border-slate-100 dark:border-slate-700">
-            <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></div>
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-              {isOnline ? 'Online' : 'Offline'}
-            </span>
-          </div>
+          {/* Online/Offline toggle button — always visible */}
+          <button
+            onClick={toggleOnline}
+            disabled={loading}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-sm border font-bold text-xs transition-all disabled:opacity-60 ${
+              isOnline
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
+                : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+            }`}
+          >
+            {loading
+              ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              : <span className="material-icons-round text-sm">{isOnline ? 'power_settings_new' : 'power_settings_new'}</span>
+            }
+            {isOnline ? 'ออฟไลน์' : 'ออนไลน์'}
+          </button>
 
-          <button className="relative w-10 h-10 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm overflow-hidden bg-slate-200 dark:bg-slate-700">
+          <button
+            onClick={() => navigate('/profile')}
+            className="relative w-10 h-10 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-sm overflow-hidden bg-slate-200 dark:bg-slate-700"
+          >
             {user?.avatar ? (
               <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <img src={IMG.driverProfile} className="w-full h-full object-cover rounded-full" alt="driver" />
             )}
-            {isOnline && <div className="absolute -top-1 -right-1 bg-red-500 w-3 h-3 rounded-full border-2 border-white dark:border-background-dark"></div>}
+            {isOnline && <div className="absolute -top-1 -right-1 bg-emerald-500 w-3 h-3 rounded-full border-2 border-white dark:border-background-dark"></div>}
           </button>
         </div>
       </header>

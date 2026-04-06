@@ -17,6 +17,8 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
   const [status, setStatus] = useState('');
@@ -26,6 +28,16 @@ export default function UsersPage() {
     action: 'block' | 'unblock';
   } | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Add User modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', phone: '', email: '', role: 'CUSTOMER', password: '' });
+  const [addLoading, setAddLoading] = useState(false);
+
+  // Edit User modal
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', role: '', status: '' });
+  const [editLoading, setEditLoading] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -46,15 +58,55 @@ export default function UsersPage() {
         ...(role && { role }),
         ...(status && { status }),
       });
-      const response = await apiFetch<{ users: User[] }>(
+      const response = await apiFetch<{ users: User[]; meta: { total: number; totalPages: number; page: number } }>(
         `/admin/users?${params}`
       );
       setUsers(response.users || []);
+      if (response.meta) {
+        setTotal(response.meta.total);
+        setTotalPages(response.meta.totalPages);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddUser = async () => {
+    if (!addForm.name || !addForm.phone) { showToast('Name and phone are required', 'error'); return; }
+    setAddLoading(true);
+    try {
+      await apiFetch('/admin/users', { method: 'POST', body: addForm });
+      showToast('User created successfully');
+      setShowAddModal(false);
+      setAddForm({ name: '', phone: '', email: '', role: 'CUSTOMER', password: '' });
+      fetchUsers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to create user', 'error');
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!editUser) return;
+    setEditLoading(true);
+    try {
+      await apiFetch(`/admin/users/${editUser.id}`, { method: 'PATCH', body: editForm });
+      showToast('User updated successfully');
+      setEditUser(null);
+      fetchUsers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update user', 'error');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const openEditModal = (user: User) => {
+    setEditUser(user);
+    setEditForm({ name: user.name, email: user.email || '', phone: user.phone || '', role: user.role, status: user.status });
   };
 
   const handleBlockUser = async (userId: string) => {
@@ -145,7 +197,10 @@ export default function UsersPage() {
             <span className="material-symbols-outlined text-xl">file_download</span>
             Export Data
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm shadow-md hover:opacity-90 transition-opacity">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
+          >
             <span className="material-symbols-outlined text-xl">add</span>
             Add New User
           </button>
@@ -303,6 +358,7 @@ export default function UsersPage() {
                           <span className="material-symbols-outlined text-xl">visibility</span>
                         </button>
                         <button
+                          onClick={() => openEditModal(user)}
                           className="p-1.5 text-slate-400 hover:text-primary transition-colors"
                           title="Edit"
                         >
@@ -342,9 +398,13 @@ export default function UsersPage() {
       </div>
 
       {/* Pagination */}
-      <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+      <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-3">
         <p className="text-sm text-slate-500">
-          Showing <span className="font-bold text-slate-900 dark:text-white">1</span> to <span className="font-bold text-slate-900 dark:text-white">5</span> of <span className="font-bold text-slate-900 dark:text-white">1,420</span> results
+          Page <span className="font-bold text-slate-900 dark:text-white">{page}</span> of{' '}
+          <span className="font-bold text-slate-900 dark:text-white">{totalPages}</span>
+          {total > 0 && (
+            <> · <span className="font-bold text-slate-900 dark:text-white">{total.toLocaleString()}</span> total users</>
+          )}
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -354,22 +414,39 @@ export default function UsersPage() {
           >
             <span className="material-symbols-outlined">chevron_left</span>
           </button>
-          <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold">
-            1
-          </button>
-          <button className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-bold">
-            2
-          </button>
-          <button className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-bold">
-            3
-          </button>
-          <span className="px-2">...</span>
-          <button className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-bold">
-            284
-          </button>
+          {/* Page number buttons — show up to 5 around current page */}
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            let p: number;
+            if (totalPages <= 5) p = i + 1;
+            else if (page <= 3) p = i + 1;
+            else if (page >= totalPages - 2) p = totalPages - 4 + i;
+            else p = page - 2 + i;
+            return (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  p === page
+                    ? 'bg-primary text-white'
+                    : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {p}
+              </button>
+            );
+          })}
+          {totalPages > 5 && page < totalPages - 2 && (
+            <>
+              <span className="px-1 text-slate-400">...</span>
+              <button onClick={() => setPage(totalPages)} className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300">
+                {totalPages}
+              </button>
+            </>
+          )}
           <button
-            onClick={() => setPage(page + 1)}
-            className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            onClick={() => setPage(Math.min(totalPages, page + 1))}
+            disabled={page >= totalPages}
+            className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
           >
             <span className="material-symbols-outlined">chevron_right</span>
           </button>
@@ -430,6 +507,114 @@ export default function UsersPage() {
           </div>
         </div>
       </div>
+
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New User</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="space-y-4">
+              {[
+                { key: 'name', label: 'Full Name', type: 'text', placeholder: 'John Doe' },
+                { key: 'phone', label: 'Phone', type: 'tel', placeholder: '+66812345678' },
+                { key: 'email', label: 'Email (optional)', type: 'email', placeholder: 'user@example.com' },
+                { key: 'password', label: 'Password', type: 'password', placeholder: 'Temporary password' },
+              ].map(({ key, label, type, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</label>
+                  <input
+                    type={type}
+                    value={addForm[key as keyof typeof addForm]}
+                    onChange={e => setAddForm(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Role</label>
+                <select
+                  value={addForm.role}
+                  onChange={e => setAddForm(prev => ({ ...prev, role: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+                >
+                  <option value="CUSTOMER">Customer (Passenger)</option>
+                  <option value="DRIVER">Driver</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm">Cancel</button>
+              <button
+                onClick={handleAddUser}
+                disabled={addLoading}
+                className="flex-[2] px-4 py-2.5 bg-primary text-white rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {addLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Create User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEditUser(null)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Edit User</h3>
+              <button onClick={() => setEditUser(null)} className="text-slate-400 hover:text-slate-600">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="space-y-4">
+              {[
+                { key: 'name', label: 'Full Name', type: 'text' },
+                { key: 'phone', label: 'Phone', type: 'tel' },
+                { key: 'email', label: 'Email', type: 'email' },
+              ].map(({ key, label, type }) => (
+                <div key={key}>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{label}</label>
+                  <input
+                    type={type}
+                    value={editForm[key as keyof typeof editForm]}
+                    onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="PENDING_VERIFICATION">Pending Verification</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditUser(null)} className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm">Cancel</button>
+              <button
+                onClick={handleEditUser}
+                disabled={editLoading}
+                className="flex-[2] px-4 py-2.5 bg-primary text-white rounded-lg font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {editLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (

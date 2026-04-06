@@ -14,6 +14,10 @@ interface Ride {
   passengerRating: number;
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLat?: number;
+  pickupLng?: number;
+  dropoffLat?: number;
+  dropoffLng?: number;
   tripDistance: string;
   driverDistance: string;
   duration: string;
@@ -76,6 +80,10 @@ export default function SubmitOfferPage() {
             passengerRating: r.customerProfile?.rating ?? 4.8,
             pickupAddress: r.pickupAddress,
             dropoffAddress: r.dropoffAddress,
+            pickupLat: r.pickupLatitude ? Number(r.pickupLatitude) : undefined,
+            pickupLng: r.pickupLongitude ? Number(r.pickupLongitude) : undefined,
+            dropoffLat: r.dropoffLatitude ? Number(r.dropoffLatitude) : undefined,
+            dropoffLng: r.dropoffLongitude ? Number(r.dropoffLongitude) : undefined,
             tripDistance: r.estimatedDistance ? `${Number(r.estimatedDistance).toFixed(1)} km` : '—',
             driverDistance: '— km',
             duration: r.estimatedDuration ? `${r.estimatedDuration} นาที` : '—',
@@ -473,17 +481,33 @@ export default function SubmitOfferPage() {
   // ── Initial Offer Submission Form ─────────────────────────────────────
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden h-screen flex flex-col">
-      {/* Map */}
-      <div className="absolute inset-0 z-0">
-        <GoogleMap
-          center={position}
-          zoom={14}
-          markers={[
-            { lat: position.lat, lng: position.lng, color: 'green', pulse: true, label: 'คุณ' },
-          ]}
-          className="absolute inset-0 w-full h-full"
-        />
-      </div>
+      {/* Map — shows driver + pickup + dropoff */}
+      {(() => {
+        const hasPickup = ride?.pickupLat && ride?.pickupLng;
+        const hasDropoff = ride?.dropoffLat && ride?.dropoffLng;
+        const mapCenter = hasPickup
+          ? { lat: ride!.pickupLat!, lng: ride!.pickupLng! }
+          : position;
+        const mapMarkers = [
+          { lat: position.lat, lng: position.lng, color: 'green' as const, pulse: true, label: 'คุณ' },
+          ...(hasPickup ? [{ lat: ride!.pickupLat!, lng: ride!.pickupLng!, color: 'blue' as const, label: 'จุดรับ' }] : []),
+          ...(hasDropoff ? [{ lat: ride!.dropoffLat!, lng: ride!.dropoffLng!, color: 'red' as const, label: 'จุดส่ง' }] : []),
+        ];
+        const mapRoute = hasPickup && hasDropoff
+          ? { origin: { lat: ride!.pickupLat!, lng: ride!.pickupLng! }, destination: { lat: ride!.dropoffLat!, lng: ride!.dropoffLng! } }
+          : undefined;
+        return (
+          <div className="absolute inset-0 z-0">
+            <GoogleMap
+              center={mapCenter}
+              zoom={14}
+              markers={mapMarkers}
+              route={mapRoute}
+              className="absolute inset-0 w-full h-full"
+            />
+          </div>
+        );
+      })()}
 
       {/* Top Bar */}
       <div className="fixed top-0 left-0 right-0 z-40 pt-12 pb-4 px-6 flex justify-between items-start pointer-events-none">

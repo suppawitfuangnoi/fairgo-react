@@ -52,6 +52,8 @@ export default function EarningsPage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawBankAccount, setWithdrawBankAccount] = useState('');
+  const [withdrawBankName, setWithdrawBankName] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -84,16 +86,22 @@ export default function EarningsPage() {
 
   async function handleWithdraw() {
     const amount = parseFloat(withdrawAmount);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0) { alert('กรุณาใส่จำนวนเงินที่ถูกต้อง (ขั้นต่ำ ฿100)'); return; }
+    if (amount < 100) { alert('จำนวนเงินขั้นต่ำในการถอนคือ ฿100'); return; }
+    if (!withdrawBankAccount || withdrawBankAccount.length < 10) { alert('กรุณาใส่เลขบัญชีธนาคาร (อย่างน้อย 10 หลัก)'); return; }
+    if (!withdrawBankName) { alert('กรุณาใส่ชื่อธนาคาร'); return; }
     setWithdrawing(true);
     try {
       await apiFetch('/wallet/withdraw', {
         method: 'POST',
-        body: { amount },
+        body: { amount, bankAccount: withdrawBankAccount, bankName: withdrawBankName },
       });
       await fetchData();
       setShowWithdrawModal(false);
       setWithdrawAmount('');
+      setWithdrawBankAccount('');
+      setWithdrawBankName('');
+      alert('ถอนเงินสำเร็จ!');
     } catch (err: any) {
       alert(err?.message || 'Withdrawal failed');
     } finally {
@@ -320,7 +328,7 @@ export default function EarningsPage() {
           <div className="bg-white w-full max-w-md rounded-t-2xl p-6 pb-10">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-slate-800">Withdraw Funds</h2>
-              <button onClick={() => setShowWithdrawModal(false)} className="text-slate-400">
+              <button onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); setWithdrawBankAccount(''); setWithdrawBankName(''); }} className="text-slate-400">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -328,22 +336,46 @@ export default function EarningsPage() {
               <p className="text-xs text-slate-500 mb-1">Available Balance</p>
               <p className="text-2xl font-bold text-primary">฿{(wallet?.balance ?? 0).toFixed(2)}</p>
             </div>
-            <div className="mb-6">
-              <label className="text-sm font-medium text-slate-700 mb-2 block">Amount to Withdraw</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">จำนวนเงินที่ต้องการถอน</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+                  <input
+                    type="number"
+                    value={withdrawAmount}
+                    onChange={e => setWithdrawAmount(e.target.value)}
+                    placeholder="ขั้นต่ำ 100"
+                    min="100"
+                    className="w-full pl-8 pr-4 py-3 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">ชื่อธนาคาร</label>
                 <input
-                  type="number"
-                  value={withdrawAmount}
-                  onChange={e => setWithdrawAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-3 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
+                  type="text"
+                  value={withdrawBankName}
+                  onChange={e => setWithdrawBankName(e.target.value)}
+                  placeholder="เช่น กสิกรไทย, ไทยพาณิชย์, กรุงเทพ"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">เลขบัญชีธนาคาร</label>
+                <input
+                  type="text"
+                  value={withdrawBankAccount}
+                  onChange={e => setWithdrawBankAccount(e.target.value.replace(/\D/g, ''))}
+                  placeholder="เลขบัญชี 10-12 หลัก"
+                  maxLength={12}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary font-mono tracking-wider"
                 />
               </div>
             </div>
             <button
               onClick={handleWithdraw}
-              disabled={withdrawing || !withdrawAmount}
+              disabled={withdrawing || !withdrawAmount || !withdrawBankAccount || !withdrawBankName}
               className="w-full bg-primary text-white font-semibold py-4 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {withdrawing ? (

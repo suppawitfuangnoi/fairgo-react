@@ -2,6 +2,16 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+
+const CreateUserSchema = z.object({
+  name: z.string().min(1),
+  phone: z.string().min(8),
+  email: z.string().email().optional().or(z.literal('')),
+  role: z.enum(["CUSTOMER", "DRIVER", "ADMIN"]).default("CUSTOMER"),
+  password: z.string().min(6).optional(),
+});
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,5 +74,49 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[ADMIN] List users error:", error);
     return errorResponse("Failed to list users", 500);
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const authResult = requireRole(request, ["ADMIN"]);
+    if (!("userId" in authResult)) return authResult as unknown as Response;
+
+    const body = await request.json();
+    const parsed = CreateUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(parsed.error.errors[0]?.message || "Invalid data", 400);
+    }
+    const { name, phone, email, role, password } = parsed.data;
+
+    // Check phone uniqueness
+    const existing = await prisma.user.findFirst({ where: { phone } });
+    if (existing) return errorResponse("Phone number already registered", 409);
+
+    const passwordHash = password ? await bcrypt.hash(password, 10) : await bcrypt.hash("FairGo@2024", 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        phone,
+        email: email || null,
+        role,
+        passwordHash,
+        status: "ACTIVE",
+      },
+      select: { id: true, name: true, phone: true, email: true, role: true, status: true, createdAt: true },
+    });
+
+    // Create profile based on role
+    if (role === "CUSTOMER") {
+      await prisma.customerProfile.create({ data: { userId: user.id } });
+    } else if (role === "DRIVER") {
+      await prisma.driverProfile.create({ data: { userId: user.id } });
+    }
+
+    return successResponse(user, "User created successfully");
+  } catch (error) {
+    console.error("[ADMIN] Create user error:", error);
+    return errorResponse("Failed to create user", 500);
   }
 }

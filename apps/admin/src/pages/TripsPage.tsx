@@ -9,7 +9,7 @@ interface Trip {
   pickup: string;
   dropoff: string;
   fare: number;
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'PENDING';
+  status: string;
   distance?: number;
   duration?: number;
   createdAt: string;
@@ -75,18 +75,30 @@ export default function TripsPage() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400';
-      case 'IN_PROGRESS':
-        return 'bg-primary/10 text-primary';
-      case 'CANCELLED':
-        return 'bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400';
-      case 'PENDING':
-        return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400';
-      default:
-        return 'bg-slate-100 text-slate-600';
-    }
+    if (['COMPLETED'].includes(status)) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400';
+    if (['IN_PROGRESS', 'DRIVER_EN_ROUTE', 'DRIVER_ARRIVED', 'PICKUP_CONFIRMED', 'ARRIVED_DESTINATION', 'AWAITING_CASH_CONFIRMATION'].includes(status)) return 'bg-primary/10 text-primary';
+    if (['CANCELLED', 'CANCELLED_BY_DRIVER', 'CANCELLED_BY_CUSTOMER', 'TIMED_OUT'].includes(status)) return 'bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400';
+    if (['DRIVER_ASSIGNED', 'PENDING'].includes(status)) return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400';
+    return 'bg-slate-100 text-slate-600';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      DRIVER_ASSIGNED: 'Assigned',
+      DRIVER_EN_ROUTE: 'En Route',
+      DRIVER_ARRIVED: 'Arrived',
+      PICKUP_CONFIRMED: 'Picked Up',
+      IN_PROGRESS: 'In Progress',
+      ARRIVED_DESTINATION: 'At Destination',
+      AWAITING_CASH_CONFIRMATION: 'Awaiting Payment',
+      COMPLETED: 'Completed',
+      CANCELLED: 'Cancelled',
+      CANCELLED_BY_DRIVER: 'Cancelled (Driver)',
+      CANCELLED_BY_CUSTOMER: 'Cancelled (Customer)',
+      TIMED_OUT: 'Timed Out',
+      DISPUTED: 'Disputed',
+    };
+    return labels[status] || status;
   };
 
   const tabCounts = {
@@ -109,9 +121,9 @@ export default function TripsPage() {
       <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
         {[
           { key: 'all' as const, label: 'All Trips', count: tabCounts.all },
-          { key: 'active' as const, label: 'Siam Area', count: undefined },
-          { key: 'completed' as const, label: 'Sukhumvit', count: undefined },
-          { key: 'cancelled' as const, label: 'Ari', count: undefined },
+          { key: 'active' as const, label: 'Active', count: tabCounts.active },
+          { key: 'completed' as const, label: 'Completed', count: tabCounts.completed },
+          { key: 'cancelled' as const, label: 'Cancelled', count: tabCounts.cancelled },
         ].map((t) => (
           <button
             key={t.key}
@@ -297,7 +309,7 @@ export default function TripsPage() {
                   )}`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                  {selectedTrip.status}
+                  {getStatusLabel(selectedTrip.status)}
                 </span>
               </div>
               <div>
