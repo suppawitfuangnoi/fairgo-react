@@ -6,6 +6,7 @@ import { validateBody } from "@/middleware/validate";
 import { updateTripStatusSchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToRoom, emitToUser } from "@/lib/socket";
+import { Notif } from "@/lib/notifications";
 
 // Full state machine including new statuses
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -255,38 +256,35 @@ export async function PATCH(
     emitToRoom(`trip:${id}`, "trip:status_update", updated);
     emitToRoom("admin:monitor", "trip:status_update", updated);
 
-    // Notify the other party on cancellation or no-show
-    if (
-      ["CANCELLED", "CANCELLED_BY_DRIVER", "NO_SHOW_PASSENGER"].includes(newStatus) &&
-      isDriver
-    ) {
-      emitToUser(trip.rideRequest.customerProfile.userId, "trip:cancelled", {
-        tripId: id,
-        cancelledBy: "driver",
-        status: newStatus,
-        reason: result.data.cancelReason,
-      });
-    } else if (
-      ["CANCELLED", "CANCELLED_BY_PASSENGER", "NO_SHOW_DRIVER"].includes(newStatus) &&
-      isCustomer
-    ) {
-      emitToUser(trip.driverProfile.user.id, "trip:cancelled", {
-        tripId: id,
-        cancelledBy: "customer",
-        status: newStatus,
-        reason: result.data.cancelReason,
-      });
+    const customerUserId = trip.rideRequest.customerProfile.userId;
+    const driverUserId   = trip.driverProfile.user.id;
+    const driverName     = trip.driverProfile.user.name ?? "Driver";
+
+    // Notify the other party + persist to DB for recovery
+    if (["CANCELLED", "CANCELLED_BY_DRIVER", "NO_SHOW_PASSENGER"].includes(newStatus) && isDriver) {
+      emitToUser(customerUserId, "trip:cancelled", { tripId: id, cancelledBy: "driver", status: newStatus, reason: result.data.cancelReason });
+      await Notif.tripCancelled(customerUserId, id, "driver", result.data.cancelReason);
+    } else if (["CANCELLED", "CANCELLED_BY_PASSENGER", "NO_SHOW_DRIVER"].includes(newStatus) && isCustomer) {
+      emitToUser(driverUserId, "trip:cancelled", { tripId: id, cancelledBy: "customer", status: newStatus, reason: result.data.cancelReason });
+      await Notif.tripCancelled(driverUserId, id, "customer", result.data.cancelReason);
+    } else if (newStatus === "DRIVER_EN_ROUTE") {
+      emitToUser(customerUserId, "trip:driver_en_route", { tripId: id });
+      await Notif.driverEnRoute(customerUserId, id, driverName);
+    } else if (newStatus === "DRIVER_ARRIVED") {
+      emitToUser(customerUserId, "trip:driver_arrived", { tripId: id });
+      await Notif.driverArrived(customerUserId, id, driverName);
+    } else if (newStatus === "IN_PROGRESS") {
+      emitToUser(customerUserId, "trip:started", { tripId: id });
+      await Notif.tripStarted(customerUserId, id, trip.dropoffAddress);
     } else if (newStatus === "AWAITING_CASH_CONFIRMATION") {
-      // Notify customer that driver arrived at destination and is awaiting payment
-      emitToUser(trip.rideRequest.customerProfile.userId, "trip:awaiting_payment", {
-        tripId: id,
-        lockedFare: trip.lockedFare,
-      });
+      emitToUser(customerUserId, "trip:awaiting_payment", { tripId: id, lockedFare: trip.lockedFare });
+      await Notif.awaitingCashPayment(customerUserId, id, trip.lockedFare);
     } else if (newStatus === "COMPLETED") {
-      emitToUser(trip.rideRequest.customerProfile.userId, "trip:completed", {
-        tripId: id,
-        lockedFare: trip.lockedFare,
-      });
+      emitToUser(customerUserId, "trip:completed", { tripId: id, lockedFare: trip.lockedFare });
+      await Promise.all([
+        Notif.tripCompleted(customerUserId, id, trip.lockedFare, false),
+        Notif.tripCompleted(driverUserId, id, trip.lockedFare, true),
+      ]);
     }
 
     return successResponse(updated, `Trip status updated to ${newStatus}`);

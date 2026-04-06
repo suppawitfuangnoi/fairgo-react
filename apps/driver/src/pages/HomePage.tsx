@@ -8,6 +8,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { socketClient, socketEvents } from '@/lib/socket';
 import { toast } from '@/lib/toast';
 import { IMG } from '@/lib/assets';
+import NotificationBell from '@/components/NotificationBell';
 
 // Add styles for custom scrollbar
 const styles = `
@@ -197,6 +198,8 @@ export default function HomePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <NotificationBell />
+
           {/* Online/Offline toggle button — always visible */}
           <button
             onClick={toggleOnline}

@@ -6,6 +6,7 @@ import { validateBody } from "@/middleware/validate";
 import { respondToOfferSchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToUser } from "@/lib/socket";
+import { Notif } from "@/lib/notifications";
 
 const MAX_NEGOTIATION_ROUNDS = 5;
 const COUNTER_OFFER_EXPIRY_MS = 90 * 1000; // 90 seconds
@@ -67,6 +68,7 @@ export async function POST(
         data: { status: "REJECTED", respondedAt: new Date() },
       });
       emitToUser(offer.driverProfile.user.id, "offer:rejected", { offerId });
+      await Notif.offerRejected(offer.driverProfile.user.id, offerId);
       return successResponse(null, "Offer rejected");
     }
 
@@ -110,7 +112,7 @@ export async function POST(
       // Update ride status to NEGOTIATING (use raw SQL to bypass Prisma enum validation)
       await prisma.$executeRaw`UPDATE ride_requests SET status = 'NEGOTIATING', "updatedAt" = NOW() WHERE id = ${offer.rideRequestId}`;
 
-      // Notify driver of counter-offer
+      // Notify driver of counter-offer — socket + DB persist
       emitToUser(offer.driverProfile.user.id, "offer:counter", {
         offerId: counterOffer.id,
         rideRequestId: offer.rideRequestId,
@@ -118,6 +120,12 @@ export async function POST(
         roundNumber: newRound,
         message: message || null,
         expiresAt: counterOffer.expiresAt,
+      });
+      await Notif.counterOffer(offer.driverProfile.user.id, {
+        id: counterOffer.id,
+        rideRequestId: offer.rideRequestId,
+        fareAmount: counterFareAmount,
+        roundNumber: newRound,
       });
 
       return successResponse(counterOffer, "Counter-offer sent to driver");
@@ -216,9 +224,10 @@ export async function POST(
       VALUES (${logId}, ${trip.id}, 'NONE', 'DRIVER_ASSIGNED', 'CUSTOMER', ${user.userId}, 'Trip created on offer accept', NOW())
     `;
 
-    // Notify driver in real-time
+    // Notify driver — socket + DB persist
     emitToUser(offer.driverProfile.user.id, "trip:created", trip);
     emitToUser(offer.driverProfile.user.id, "offer:accepted", { offerId, tripId: trip.id });
+    await Notif.offerAccepted(offer.driverProfile.user.id, trip.id, offer.fareAmount);
 
     return successResponse(trip, "Offer accepted. Trip created with fare locked!");
   } catch (error) {

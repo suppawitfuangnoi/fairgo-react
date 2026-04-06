@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api';
 import { IMG } from '@/lib/assets';
 import GoogleMap from '@/components/GoogleMap';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import NotificationBell from '@/components/NotificationBell';
 
 interface Trip {
   id: string;
@@ -97,6 +98,7 @@ export default function HomePage() {
                 </span>
               </button>
             </div>
+            <NotificationBell />
             <button
               onClick={() => navigate('/profile')}
               className="w-9 h-9 rounded-full overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm"
@@ -273,7 +275,7 @@ export default function HomePage() {
                 { icon: 'history', label: 'ประวัติการเดินทาง', path: '/history' },
                 { icon: 'local_offer', label: 'โปรโมชั่นและส่วนลด', path: '/ride-request' },
                 { icon: 'payment', label: 'วิธีการชำระเงิน', path: '/profile' },
-                { icon: 'notifications', label: 'การแจ้งเตือน', path: '/profile' },
+                { icon: 'notifications', label: 'การแจ้งเตือน', path: '/notifications' },
                 { icon: 'help_outline', label: 'ความช่วยเหลือ', path: '/profile' },
                 { icon: 'settings', label: 'ตั้งค่า', path: '/profile' },
               ].map(({ icon, label, path }) => (

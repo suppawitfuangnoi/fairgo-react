@@ -4,6 +4,7 @@ import { requireAuth } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToRoom, emitToUser } from "@/lib/socket";
+import { Notif } from "@/lib/notifications";
 
 /**
  * POST /api/v1/trips/:id/confirm-payment
@@ -119,15 +120,15 @@ export async function POST(
         data: { totalTrips: { increment: 1 } },
       });
 
-      // Notify both parties
-      emitToRoom(`trip:${tripId}`, "trip:completed", {
-        tripId,
-        lockedFare: trip.lockedFare,
-      });
-      emitToUser(trip.rideRequest.customerProfile.userId, "trip:payment_confirmed", {
-        tripId,
-        amount: trip.lockedFare,
-      });
+      // Notify both parties — socket + DB persist
+      emitToRoom(`trip:${tripId}`, "trip:completed", { tripId, lockedFare: trip.lockedFare });
+      emitToUser(trip.rideRequest.customerProfile.userId, "trip:payment_confirmed", { tripId, amount: trip.lockedFare });
+      await Promise.all([
+        Notif.paymentConfirmed(trip.rideRequest.customerProfile.userId, tripId, trip.lockedFare),
+        Notif.paymentConfirmed(trip.driverProfile.user.id, tripId, trip.lockedFare),
+        Notif.tripCompleted(trip.rideRequest.customerProfile.userId, tripId, trip.lockedFare, false),
+        Notif.tripCompleted(trip.driverProfile.user.id, tripId, trip.lockedFare, true),
+      ]);
     }
 
     const updatedPayment = await prisma.payment.update({

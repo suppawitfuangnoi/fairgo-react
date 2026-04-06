@@ -13,6 +13,7 @@ import TripSummaryPage from '@/pages/TripSummaryPage';
 import RatingPage from '@/pages/RatingPage';
 import ProfilePage from '@/pages/ProfilePage';
 import HistoryPage from '@/pages/HistoryPage';
+import NotificationsPage from '@/pages/NotificationsPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -96,6 +97,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <HistoryPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
             </ProtectedRoute>
           }
         />

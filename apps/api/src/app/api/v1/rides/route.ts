@@ -7,6 +7,7 @@ import { createRideRequestSchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToRoom } from "@/lib/socket";
 import { calculateDistance, estimateDuration } from "@/lib/pricing";
+import { Notif } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,10 +57,36 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Broadcast to nearby drivers (zone-based) + all online drivers room
+    // Broadcast to nearby drivers (zone-based) + admin monitor
     const zone = `zone:${Math.floor(rideRequest.pickupLatitude * 10)}:${Math.floor(rideRequest.pickupLongitude * 10)}`;
     emitToRoom(zone, "ride:new_request", rideRequest);
     emitToRoom("admin:monitor", "ride:new_request", rideRequest);
+
+    // Persist notification for all online/verified drivers in zone (best-effort)
+    // We notify online drivers who are in the DB so they recover after reconnect
+    const onlineDrivers = await prisma.driverProfile.findMany({
+      where: {
+        isOnline: true,
+        isVerified: true,
+        // crude zone filter — within ~10 km (1 degree ≈ 111 km)
+        currentLatitude: { gte: rideRequest.pickupLatitude - 0.09, lte: rideRequest.pickupLatitude + 0.09 },
+        currentLongitude: { gte: rideRequest.pickupLongitude - 0.09, lte: rideRequest.pickupLongitude + 0.09 },
+      },
+      select: { userId: true },
+    });
+
+    await Promise.all(
+      onlineDrivers.map((d) =>
+        Notif.newRideRequest(d.userId, {
+          id: rideRequest.id,
+          pickupAddress: rideRequest.pickupAddress,
+          dropoffAddress: rideRequest.dropoffAddress,
+          fareMin: rideRequest.fareMin,
+          fareMax: rideRequest.fareMax,
+          vehicleType: rideRequest.vehicleType,
+        })
+      )
+    );
 
     return successResponse(rideRequest, "Ride request created", 201);
   } catch (error) {

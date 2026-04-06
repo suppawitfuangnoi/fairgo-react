@@ -14,6 +14,7 @@ import EarningsPage from '@/pages/EarningsPage';
 import ProfilePage from '@/pages/ProfilePage';
 import RatingPage from '@/pages/RatingPage';
 import HistoryPage from '@/pages/HistoryPage';
+import NotificationsPage from '@/pages/NotificationsPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -98,6 +99,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <HistoryPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
             </ProtectedRoute>
           }
         />

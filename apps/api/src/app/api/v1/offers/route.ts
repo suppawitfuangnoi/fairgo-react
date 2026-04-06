@@ -6,6 +6,7 @@ import { validateBody } from "@/middleware/validate";
 import { createRideOfferSchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToUser } from "@/lib/socket";
+import { Notif } from "@/lib/notifications";
 
 const MAX_NEGOTIATION_ROUNDS = 5;
 const COUNTER_OFFER_EXPIRY_MS = 90 * 1000; // 90 seconds to respond to counter-offers
@@ -117,11 +118,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Notify customer
+    // Notify customer — socket emit + DB persist
     emitToUser(rideRequest.customerProfile.userId, "offer:new", {
       ...offer,
       roundNumber,
       isCounter: roundNumber > 1,
+    });
+
+    await Notif.newOffer(rideRequest.customerProfile.userId, {
+      id: offer.id,
+      rideRequestId: offer.rideRequestId,
+      fareAmount: offer.fareAmount,
+      driverName: offer.driverProfile.user.name ?? "Driver",
+      roundNumber,
     });
 
     return successResponse(offer, "Offer submitted successfully", 201);

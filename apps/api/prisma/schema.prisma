@@ -110,6 +110,23 @@ enum WalletTransactionType {
 }
 
 enum NotificationType {
+  // ── Core business events ─────────────────────────────────────────
+  NEW_RIDE_REQUEST       // Sent to nearby online drivers
+  NEW_OFFER              // Sent to customer when driver submits offer
+  COUNTER_OFFER          // Sent to either party when counter-offer received
+  OFFER_ACCEPTED         // Sent to driver when customer accepts
+  OFFER_REJECTED         // Sent to driver when customer rejects
+  DRIVER_EN_ROUTE        // Sent to customer when driver starts coming
+  DRIVER_ARRIVED         // Sent to customer when driver arrives
+  TRIP_STARTED           // Sent to customer when trip begins
+  AWAITING_CASH_PAYMENT  // Sent to customer when cash confirmation needed
+  PAYMENT_CONFIRMED      // Sent to both parties on payment complete
+  TRIP_COMPLETED         // Sent to both parties on trip complete
+  TRIP_CANCELLED         // Sent to affected party on cancellation
+  DISPUTE_CREATED        // Admin notification on new dispute
+  SYSTEM_ALERT           // Platform-wide system messages
+  OTP_DEBUG_INFO         // Non-production OTP debug (admin only)
+  // ── Legacy (kept for backward compat) ───────────────────────────
   RIDE_REQUEST
   RIDE_OFFER
   RIDE_ACCEPTED
@@ -479,19 +496,23 @@ model Rating {
 }
 
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  title     String
-  body      String
-  data      Json?
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  id                String           @id @default(cuid())
+  userId            String
+  type              NotificationType
+  title             String
+  body              String
+  relatedEntityType String?          // "trip" | "offer" | "ride" | "payment"
+  relatedEntityId   String?          // ID of related entity (tripId, offerId, etc.)
+  payload           Json?            // Structured extra data for deep-link / display
+  data              Json?            // Legacy field — kept for backward compat
+  isRead            Boolean          @default(false)
+  readAt            DateTime?
+  createdAt         DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([isRead])
+  @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
 }

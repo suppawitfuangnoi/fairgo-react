@@ -1,22 +1,28 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/middleware/auth";
+import { requireAuth } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { JwtPayload } from "@/lib/jwt";
+import { markNotificationRead } from "@/lib/notifications";
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+/**
+ * PATCH /api/v1/notifications/:id/read
+ * Mark a single notification as read (sets readAt timestamp).
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const authResult = requireRole(request, ["CUSTOMER", "DRIVER", "ADMIN"]);
+    const authResult = requireAuth(request);
     if (!("userId" in authResult)) return authResult as unknown as Response;
     const user = authResult as JwtPayload;
 
-    const notification = await prisma.notification.updateMany({
-      where: { id: params.id, userId: user.userId },
-      data: { isRead: true },
-    });
-    if (!notification.count) return errorResponse("Notification not found", 404);
+    const { id } = await params;
+    const updated = await markNotificationRead(id, user.userId);
+    if (!updated) return errorResponse("Notification not found", 404);
     return successResponse(null, "Marked as read");
   } catch (error) {
+    console.error("[NOTIFICATIONS] mark-read error:", error);
     return errorResponse("Failed to update notification", 500);
   }
 }
