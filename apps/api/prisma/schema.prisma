@@ -656,6 +656,19 @@ model SupportTicket {
   @@map("support_tickets")
 }
 
+// ── Background job distributed-lock registry ─────────────────────────────────
+// One row per named job. The atomic ON CONFLICT DO UPDATE WHERE pattern in
+// job-lock.ts ensures only one replica can run a given job at a time.
+model JobRun {
+  jobName    String    @id              // e.g. "otp-cleanup"
+  lockedAt   DateTime?                  // NULL when idle
+  lockedBy   String?                    // hostname-pid of the holder
+  lastRunAt  DateTime?                  // When the last successful run finished
+  lastResult Json?                      // Summary from the last run
+
+  @@map("job_runs")
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?

@@ -14,6 +14,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
+import { getJobStats } from "@/lib/jobs/job-lock";
 
 const ACTIVE_TRIP_STATUSES = [
   "DRIVER_ASSIGNED",
@@ -42,6 +43,7 @@ export async function GET(request: NextRequest) {
       onlineDrivers,
       unresolvedDisputes,
       staleNegotiations,
+      jobStats,
     ] = await Promise.all([
       // Active trips with passenger + driver info
       prisma.trip.findMany({
@@ -88,6 +90,9 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "asc" },
         take: 50,
       }),
+
+      // Background job health
+      getJobStats(),
     ]);
 
     // Classify stale trips (updatedAt older than staleThreshold)
@@ -153,6 +158,7 @@ export async function GET(request: NextRequest) {
       onlineDrivers: shapedOnlineDrivers,
       unresolvedDisputes,
       staleNegotiations: shapedStaleNegotiations,
+      jobStats,
     });
   } catch (error) {
     console.error("[ADMIN] Monitoring error:", error);

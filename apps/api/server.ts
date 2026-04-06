@@ -10,6 +10,7 @@ import next from "next";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { verifyAccessToken } from "./src/lib/jwt";
 import { PrismaClient } from "@prisma/client";
+import { startScheduler } from "./src/lib/jobs/scheduler";
 
 const dev = process.env.NODE_ENV !== "production";
 const port = parseInt(process.env.PORT || "4000");
@@ -492,6 +493,9 @@ async function main() {
   (global as Record<string, unknown>).__socketIO = io;
   (global as Record<string, unknown>).__onlineDrivers = onlineDrivers;
   (global as Record<string, unknown>).__userSockets = userSockets;
+
+  // Start background cleanup/detection jobs (distributed-lock safe)
+  startScheduler();
 
   httpServer.listen(port, () => {
     console.log(`> FAIRGO API + Socket.IO ready on http://localhost:${port}`);
