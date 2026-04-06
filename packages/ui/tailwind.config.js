@@ -29,6 +29,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'IBM Plex Sans Thai', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'IBM Plex Sans Thai', 'sans-serif'],
       },
       borderRadius: {
         'lg': '1rem',
