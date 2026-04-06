@@ -115,7 +115,7 @@ export default function MatchingPage() {
 
     const onOfferExpired = (data: { offerId: string }) => {
       setOffers(prev => prev.filter(o => o.id !== data.offerId));
-      toast.warn('ข้อเสนอหมดอายุ');
+      toast.warning('ข้อเสนอหมดอายุ');
     };
 
     const onRideCancelled = () => {

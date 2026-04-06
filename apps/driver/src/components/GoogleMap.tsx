@@ -15,6 +15,11 @@ interface Marker {
   pulse?: boolean;
 }
 
+interface RouteConfig {
+  origin: { lat: number; lng: number };
+  destination: { lat: number; lng: number };
+}
+
 interface GoogleMapProps {
   center?: { lat: number; lng: number };
   zoom?: number;
@@ -22,6 +27,7 @@ interface GoogleMapProps {
   className?: string;
   onMapReady?: (map: any) => void;
   showTraffic?: boolean;
+  route?: RouteConfig;
 }
 
 export default function GoogleMap({
@@ -31,10 +37,12 @@ export default function GoogleMap({
   className = '',
   onMapReady,
   showTraffic = false,
+  route,
 }: GoogleMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const directionsRendererRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -101,6 +109,34 @@ export default function GoogleMap({
       markersRef.current.push(m);
     });
   }, [markers]);
+
+  // Draw route using Directions API when route prop is provided
+  useEffect(() => {
+    if (!mapInstanceRef.current || !ready) return;
+    // Clear any existing route
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null);
+      directionsRendererRef.current = null;
+    }
+    if (!route) return;
+    const directionsService = new window.google.maps.DirectionsService();
+    const directionsRenderer = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: '#13c8ec', strokeWeight: 4, strokeOpacity: 0.8 },
+    });
+    directionsRenderer.setMap(mapInstanceRef.current);
+    directionsRendererRef.current = directionsRenderer;
+    directionsService.route(
+      {
+        origin: route.origin,
+        destination: route.destination,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      },
+      (result: any, status: string) => {
+        if (status === 'OK') directionsRenderer.setDirections(result);
+      }
+    );
+  }, [ready, route?.origin?.lat, route?.origin?.lng, route?.destination?.lat, route?.destination?.lng]);
 
   if (!ready) {
     return (

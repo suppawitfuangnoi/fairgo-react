@@ -132,7 +132,7 @@ export default function SubmitOfferPage() {
 
     const onOfferExpired = (data: { offerId: string }) => {
       if (data.offerId === submittedOfferId || (customerCounter && data.offerId === customerCounter.offerId)) {
-        toast.warn('ข้อเสนอหมดอายุ');
+        toast.warning('ข้อเสนอหมดอายุ');
         setTimeout(() => navigate('/home', { replace: true }), 1500);
       }
     };
