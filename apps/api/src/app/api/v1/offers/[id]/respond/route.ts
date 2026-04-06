@@ -123,7 +123,44 @@ export async function POST(
       return successResponse(counterOffer, "Counter-offer sent to driver");
     }
 
-    // ACCEPT the offer - create a trip with locked fare
+    // ACCEPT the offer - check for active trips first (1 active trip per user rule)
+    const ACTIVE_TRIP_STATUSES = [
+      "DRIVER_ASSIGNED",
+      "DRIVER_EN_ROUTE",
+      "DRIVER_ARRIVED",
+      "PICKUP_CONFIRMED",
+      "IN_PROGRESS",
+      "ARRIVED_DESTINATION",
+      "AWAITING_CASH_CONFIRMATION",
+    ];
+
+    // Check passenger active trip
+    const passengerActiveTrip = await prisma.trip.findFirst({
+      where: {
+        rideRequest: { customerProfileId: offer.rideRequest.customerProfileId },
+        status: { in: ACTIVE_TRIP_STATUSES as any[] },
+        id: { not: undefined }, // ensure it's a real trip
+      },
+    });
+    if (passengerActiveTrip) {
+      return errorResponse("You already have an active trip. Complete or cancel it first.", 409);
+    }
+
+    // Check driver active trip
+    const driverActiveTrip = await prisma.trip.findFirst({
+      where: {
+        driverProfileId: offer.driverProfileId,
+        status: { in: ACTIVE_TRIP_STATUSES as any[] },
+      },
+    });
+    if (driverActiveTrip) {
+      return errorResponse(
+        "This driver already has an active trip. Please choose another driver.",
+        409
+      );
+    }
+
+    // Create a trip with locked fare
     const trip = await prisma.$transaction(async (tx) => {
       await tx.rideOffer.update({
         where: { id: offerId },
@@ -171,6 +208,13 @@ export async function POST(
 
       return newTrip;
     });
+
+    // Log initial status
+    const logId = `tsl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await prisma.$executeRaw`
+      INSERT INTO trip_status_logs (id, "tripId", "fromStatus", "toStatus", "changedByType", "changedById", note, "createdAt")
+      VALUES (${logId}, ${trip.id}, 'NONE', 'DRIVER_ASSIGNED', 'CUSTOMER', ${user.userId}, 'Trip created on offer accept', NOW())
+    `;
 
     // Notify driver in real-time
     emitToUser(offer.driverProfile.user.id, "trip:created", trip);

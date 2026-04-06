@@ -76,8 +76,14 @@ enum TripStatus {
   DRIVER_ARRIVED
   PICKUP_CONFIRMED
   IN_PROGRESS
+  ARRIVED_DESTINATION
+  AWAITING_CASH_CONFIRMATION
   COMPLETED
   CANCELLED
+  CANCELLED_BY_PASSENGER
+  CANCELLED_BY_DRIVER
+  NO_SHOW_PASSENGER
+  NO_SHOW_DRIVER
 }
 
 enum PaymentMethod {
@@ -350,6 +356,7 @@ model Trip {
   driverProfile DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
   vehicle       Vehicle?      @relation(fields: [vehicleId], references: [id])
   tripLocations TripLocation[]
+  statusLogs    TripStatusLog[]
   payment       Payment?
   ratings       Rating[]
 
@@ -357,6 +364,23 @@ model Trip {
   @@index([status])
   @@index([createdAt])
   @@map("trips")
+}
+
+model TripStatusLog {
+  id            String     @id @default(cuid())
+  tripId        String
+  fromStatus    String     // Previous status (String to avoid enum issues across versions)
+  toStatus      String     // New status
+  changedByType String     // "DRIVER", "CUSTOMER", "ADMIN", "SYSTEM"
+  changedById   String?    // userId who triggered the change
+  note          String?    // Optional note (e.g. cancellation reason)
+  createdAt     DateTime   @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([createdAt])
+  @@map("trip_status_logs")
 }
 
 model TripLocation {
@@ -376,17 +400,19 @@ model TripLocation {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  tripId        String        @unique
-  amount        Float
-  commission    Float         // Platform commission
-  driverEarning Float         // amount - commission
-  method        PaymentMethod
-  status        PaymentStatus @default(PENDING)
-  transactionRef String?
-  paidAt        DateTime?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                    String        @id @default(cuid())
+  tripId                String        @unique
+  amount                Float
+  commission            Float         // Platform commission
+  driverEarning         Float         // amount - commission
+  method                PaymentMethod
+  status                PaymentStatus @default(PENDING)
+  transactionRef        String?
+  driverConfirmedAt     DateTime?     // When driver confirmed cash received
+  passengerConfirmedAt  DateTime?     // When passenger confirmed payment
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 

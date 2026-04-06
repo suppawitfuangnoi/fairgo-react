@@ -78,10 +78,17 @@ export const updateTripStatusSchema = z.object({
     "DRIVER_ARRIVED",
     "PICKUP_CONFIRMED",
     "IN_PROGRESS",
+    "ARRIVED_DESTINATION",
+    "AWAITING_CASH_CONFIRMATION",
     "COMPLETED",
     "CANCELLED",
+    "CANCELLED_BY_PASSENGER",
+    "CANCELLED_BY_DRIVER",
+    "NO_SHOW_PASSENGER",
+    "NO_SHOW_DRIVER",
   ]),
   cancelReason: z.string().max(500).optional(),
+  note: z.string().max(500).optional(),
 });
 
 export const updateLocationSchema = z.object({

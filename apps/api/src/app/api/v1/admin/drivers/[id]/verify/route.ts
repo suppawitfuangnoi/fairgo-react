@@ -4,6 +4,8 @@ import { requireRole } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { validateBody } from "@/middleware/validate";
 import { verifyDriverSchema } from "@/lib/validation";
+import { writeAuditLog, getClientIp } from "@/lib/audit";
+import { JwtPayload } from "@/lib/jwt";
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +14,7 @@ export async function POST(
   try {
     const authResult = requireRole(request, ["ADMIN"]);
     if (!("userId" in authResult)) return authResult as unknown as Response;
+    const admin = authResult as JwtPayload;
 
     const { id: driverProfileId } = await params;
     const result = await validateBody(request, verifyDriverSchema);
@@ -21,6 +24,7 @@ export async function POST(
 
     const profile = await prisma.driverProfile.findUnique({
       where: { id: driverProfileId },
+      include: { user: { select: { id: true, name: true, phone: true } } },
     });
 
     if (!profile) return errorResponse("Driver profile not found", 404);
@@ -34,6 +38,17 @@ export async function POST(
       include: {
         user: { select: { id: true, name: true, phone: true } },
       },
+    });
+
+    // Write audit log
+    await writeAuditLog({
+      userId: admin.userId,
+      action: verificationStatus === "APPROVED" ? "APPROVE_DRIVER" : "REJECT_DRIVER",
+      entity: "DriverProfile",
+      entityId: driverProfileId,
+      oldData: { verificationStatus: profile.verificationStatus, isVerified: profile.isVerified },
+      newData: { verificationStatus, isVerified: updated.isVerified },
+      ipAddress: getClientIp(request),
     });
 
     return successResponse(
