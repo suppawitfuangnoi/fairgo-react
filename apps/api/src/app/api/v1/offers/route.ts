@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       include: { customerProfile: true },
     });
     if (!rideRequest) return errorResponse("Ride request not found", 404);
-    if (!["PENDING", "NEGOTIATING"].includes(rideRequest.status)) {
+    if (!["PENDING", "MATCHING", "NEGOTIATING"].includes(rideRequest.status as string)) {
       return errorResponse("Ride request is no longer available", 422);
     }
 
@@ -78,11 +78,8 @@ export async function POST(request: NextRequest) {
         return errorResponse(`Maximum negotiation rounds (${MAX_NEGOTIATION_ROUNDS}) reached`, 422);
       }
 
-      // Mark parent offer as COUNTERED
-      await prisma.rideOffer.update({
-        where: { id: parentOffer.id },
-        data: { status: "COUNTERED", respondedAt: new Date() },
-      });
+      // Mark parent offer as COUNTERED (use raw SQL to bypass Prisma enum validation for new enum values)
+      await prisma.$executeRaw`UPDATE ride_offers SET status = 'COUNTERED', "respondedAt" = NOW() WHERE id = ${parentOffer.id}`;
     }
 
     const offer = await prisma.rideOffer.create({
@@ -107,12 +104,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Update ride request status
-    const newStatus = roundNumber > 1 ? "NEGOTIATING" : "MATCHING";
-    await prisma.rideRequest.update({
-      where: { id: result.data.rideRequestId },
-      data: { status: newStatus },
-    });
+    // Update ride request status (use raw SQL for new enum values)
+    if (roundNumber > 1) {
+      // NEGOTIATING is a new enum value - use raw SQL to bypass stale Prisma client enum validation
+      await prisma.$executeRaw`UPDATE ride_requests SET status = 'NEGOTIATING', "updatedAt" = NOW() WHERE id = ${result.data.rideRequestId}`;
+    } else {
+      await prisma.rideRequest.update({
+        where: { id: result.data.rideRequestId },
+        data: { status: "MATCHING" },
+      });
+    }
 
     // Notify customer
     emitToUser(rideRequest.customerProfile.userId, "offer:new", {

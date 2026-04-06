@@ -90,13 +90,10 @@ export async function POST(
         );
       }
 
-      // Mark driver's offer as COUNTERED
-      await prisma.rideOffer.update({
-        where: { id: offerId },
-        data: { status: "COUNTERED", respondedAt: new Date() },
-      });
+      // Mark driver's offer as COUNTERED (use raw SQL to bypass Prisma enum validation for new enum values)
+      await prisma.$executeRaw`UPDATE ride_offers SET status = 'COUNTERED', "respondedAt" = NOW() WHERE id = ${offerId}`;
 
-      // Create customer's counter-offer
+      // Create customer's counter-offer (proposedBy is a plain string field, no enum issue)
       const counterOffer = await prisma.rideOffer.create({
         data: {
           rideRequestId: offer.rideRequestId,
@@ -110,11 +107,8 @@ export async function POST(
         },
       });
 
-      // Update ride status to NEGOTIATING
-      await prisma.rideRequest.update({
-        where: { id: offer.rideRequestId },
-        data: { status: "NEGOTIATING" },
-      });
+      // Update ride status to NEGOTIATING (use raw SQL to bypass Prisma enum validation)
+      await prisma.$executeRaw`UPDATE ride_requests SET status = 'NEGOTIATING', "updatedAt" = NOW() WHERE id = ${offer.rideRequestId}`;
 
       // Notify driver of counter-offer
       emitToUser(offer.driverProfile.user.id, "offer:counter", {
