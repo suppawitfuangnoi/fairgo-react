@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const CreateUserSchema = z.object({
@@ -10,7 +9,6 @@ const CreateUserSchema = z.object({
   phone: z.string().min(8),
   email: z.string().email().optional().or(z.literal('')),
   role: z.enum(["CUSTOMER", "DRIVER", "ADMIN"]).default("CUSTOMER"),
-  password: z.string().min(6).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -87,13 +85,11 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return errorResponse(parsed.error.errors[0]?.message || "Invalid data", 400);
     }
-    const { name, phone, email, role, password } = parsed.data;
+    const { name, phone, email, role } = parsed.data;
 
     // Check phone uniqueness within the same role only
     const existing = await prisma.user.findFirst({ where: { phone, role } });
     if (existing) return errorResponse(`Phone number already registered as ${role}`, 409);
-
-    const passwordHash = password ? await bcrypt.hash(password, 10) : await bcrypt.hash("FairGo@2024", 10);
 
     const user = await prisma.user.create({
       data: {
@@ -101,7 +97,6 @@ export async function POST(request: NextRequest) {
         phone,
         email: email || null,
         role,
-        passwordHash,
         status: "ACTIVE",
       },
       select: { id: true, name: true, phone: true, email: true, role: true, status: true, createdAt: true },
@@ -112,6 +107,8 @@ export async function POST(request: NextRequest) {
       await prisma.customerProfile.create({ data: { userId: user.id } });
     } else if (role === "DRIVER") {
       await prisma.driverProfile.create({ data: { userId: user.id } });
+    } else if (role === "ADMIN") {
+      await prisma.adminProfile.create({ data: { userId: user.id } });
     }
 
     return successResponse(user, "User created successfully");
