@@ -58,6 +58,32 @@ body {
   animation: fadeInUp 0.6s ease-out forwards;
 }
 
+/* Fare slider — webkit thumb styling */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  background: #13c8ec;
+  cursor: pointer;
+  margin-top: -11px;
+  box-shadow: 0 4px 6px -1px rgba(19, 200, 236, 0.4);
+  border: 3px solid white;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  border-radius: 9999px;
+}
+input[type=range]:focus {
+  outline: none;
+}
+
 /* Mobile-first layout */
 @media (max-width: 768px) {
   #root {
