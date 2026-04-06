@@ -69,6 +69,34 @@ export default function SubmitOfferPage() {
   const countdownRef = useRef<ReturnType<typeof setInterval>>();
   const expiryRef = useRef<ReturnType<typeof setInterval>>();
 
+  // ── Session restoration: called by useActiveSession on refresh/reconnect ──
+  // location.state?.restored === true means we navigated here to restore state
+  // location.state?.pendingOffer  = { id, fareAmount, roundNumber, expiresAt }
+  // location.state?.customerCounter = counter-offer data if customer countered
+  useEffect(() => {
+    const state = location.state as {
+      restored?: boolean;
+      pendingOffer?: { id: string; fareAmount: number; roundNumber: number; expiresAt?: string };
+      customerCounter?: CounterOfferData | null;
+    } | null;
+
+    if (state?.restored && state.pendingOffer) {
+      setSubmittedOfferId(state.pendingOffer.id);
+      setFareAmount(state.pendingOffer.fareAmount);
+      if (state.customerCounter) {
+        setCustomerCounter(state.customerCounter);
+      }
+      // Compute remaining countdown from expiresAt if present
+      if (state.pendingOffer.expiresAt) {
+        const remaining = Math.max(
+          0,
+          Math.round((new Date(state.pendingOffer.expiresAt).getTime() - Date.now()) / 1000)
+        );
+        setWaitingCountdown(remaining);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch ride if not passed via navigation state
   useEffect(() => {
     if (!ride && rideId) {

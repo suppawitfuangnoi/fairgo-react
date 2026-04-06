@@ -1,31 +1,31 @@
 /**
  * useActiveSession — Driver App
  *
- * Runs on mount (and on reconnect) to restore the driver's session after a
- * page refresh or network drop.
+ * Runs on mount (and on socket reconnect) to restore the driver's session
+ * after a page refresh or network drop. Checks in priority order:
  *
- * Logic:
- * 1. Fetch /trips/active → if found:
- *    a. Register active trip on socketClient (joins trip room)
- *    b. Mark driver as in-trip so heartbeat carries isInTrip=true
- *    c. Navigate to /trip-active/:tripId
- * 2. If no active trip, restore online presence if driver was online
- *    (stored in localStorage as 'fg_driver_online')
+ * 1. Active TRIP  → navigate to /trip-active/:tripId
+ * 2. Pending OFFER (mid-negotiation) → navigate to /submit-offer/:rideId
+ * 3. If was online before refresh → re-emit driver:online to server
  *
- * Usage: Call once in the root authenticated layout of the driver app.
+ * Persists "was online" intent in localStorage so refresh doesn't silently
+ * mark the driver offline.
+ *
+ * Usage: call once inside ProtectedRoute (App.tsx).
  */
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
 import { socketClient } from '@/lib/socket';
 
-const ACTIVE_TRIP_PAGES = ['/trip-active', '/trip-summary', '/active-trip'];
+const ACTIVE_TRIP_PAGES       = ['/trip-active', '/trip-summary', '/active-trip'];
+const ACTIVE_NEGOTIATION_PAGES = ['/submit-offer'];
 
-const ONLINE_STORAGE_KEY = 'fg_driver_online';
+const ONLINE_STORAGE_KEY  = 'fg_driver_online';
 const VEHICLE_STORAGE_KEY = 'fg_driver_vehicle_type';
 
-/** Persist/read online intent across refreshes */
-export const driverPresistence = {
+// ── Persistence helpers (exported so HomePage toggle can use them) ────────────
+export const driverPersistence = {
   setOnline(vehicleType?: string) {
     localStorage.setItem(ONLINE_STORAGE_KEY, 'true');
     if (vehicleType) localStorage.setItem(VEHICLE_STORAGE_KEY, vehicleType);
@@ -48,55 +48,72 @@ export function useActiveSession() {
   const location = useLocation();
   const checked  = useRef(false);
 
+  // ── Run once on mount ───────────────────────────────────────────────
   useEffect(() => {
     if (checked.current) return;
     checked.current = true;
 
-    const currentPath = location.pathname;
-    if (ACTIVE_TRIP_PAGES.some((p) => currentPath.startsWith(p))) return;
+    const path = location.pathname;
+    // Already on the right screen — skip
+    if (ACTIVE_TRIP_PAGES.some(p => path.startsWith(p))) return;
+    if (ACTIVE_NEGOTIATION_PAGES.some(p => path.startsWith(p))) return;
 
     void restoreSession(navigate);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-check on socket reconnect
+  // ── Re-check on every socket reconnect ─────────────────────────────
   useEffect(() => {
     const socket = socketClient.connect();
 
-    const onReconnect = () => {
-      // Fetch notifications to catch missed events
+    const onConnect = () => {
+      // Fetch notifications to catch any missed events
       apiFetch('/notifications?page=1&limit=20').catch(() => {});
 
-      const currentPath = location.pathname;
-      if (ACTIVE_TRIP_PAGES.some((p) => currentPath.startsWith(p))) return;
+      const path = location.pathname;
+      if (ACTIVE_TRIP_PAGES.some(p => path.startsWith(p))) return;
+      if (ACTIVE_NEGOTIATION_PAGES.some(p => path.startsWith(p))) return;
+
       void restoreSession(navigate);
     };
 
-    socket.on('connect', onReconnect);
-    return () => {
-      socket.off('connect', onReconnect);
-    };
+    socket.on('connect', onConnect);
+    return () => { socket.off('connect', onConnect); };
   }, [navigate, location.pathname]);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function restoreSession(navigate: ReturnType<typeof useNavigate>) {
   try {
-    // 1. Check for active trip
-    const trip = await apiFetch<{
-      id: string;
-      status: string;
-    } | null>('/trips/active');
-
+    // 1. Check for active trip (highest priority)
+    const trip = await apiFetch<{ id: string; status: string } | null>('/trips/active');
     if (trip?.id) {
       socketClient.setActiveTrip(trip.id);
-      socketClient.setOnline(); // driver must be online if in trip
+      socketClient.setOnline(); // must be online if in trip
       console.log('[Driver useActiveSession] Restoring active trip:', trip.id);
       navigate(`/trip-active/${trip.id}`, { replace: true });
       return;
     }
 
-    // 2. Restore online presence if driver intended to be online
-    if (driverPresistence.wasOnline()) {
-      const vehicleType = driverPresistence.getVehicleType();
+    // 2. Check for pending negotiation offer
+    const pending = await apiFetch<{
+      offer: { id: string; fareAmount: number; roundNumber: number; expiresAt?: string };
+      rideRequest: { id: string };
+      customerCounter: unknown | null;
+    } | null>('/offers/driver-pending');
+
+    if (pending?.rideRequest?.id) {
+      console.log('[Driver useActiveSession] Restoring negotiation for ride:', pending.rideRequest.id);
+      navigate(`/submit-offer/${pending.rideRequest.id}`, {
+        replace: true,
+        state: { restored: true, pendingOffer: pending.offer, customerCounter: pending.customerCounter },
+      });
+      return;
+    }
+
+    // 3. Restore online presence if driver intended to be online
+    if (driverPersistence.wasOnline()) {
+      const vehicleType = driverPersistence.getVehicleType();
       socketClient.setOnline(vehicleType);
       console.log('[Driver useActiveSession] Restored online presence');
     }
