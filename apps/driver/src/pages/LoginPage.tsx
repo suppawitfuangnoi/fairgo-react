@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
 import { apiFetch } from '@/lib/api';
@@ -15,34 +15,81 @@ const Logo = () => (
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const setAuth  = useAuthStore((state) => state.setAuth);
 
-  const [step, setStep] = useState<Step>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpRef, setOtpRef] = useState('');
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [pendingAuth, setPendingAuth] = useState<{ user: any; at: string; rt?: string } | null>(null);
+  const [step, setStep]                 = useState<Step>('phone');
+  const [phone, setPhone]               = useState('');
+  const [otp, setOtp]                   = useState('');
+  const [otpRef, setOtpRef]             = useState('');
+  const [debugCode, setDebugCode]       = useState('');
+  const [name, setName]                 = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
+  const [countdown, setCountdown]       = useState(0);
+  const [expiresIn, setExpiresIn]       = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  const [lockedUntil, setLockedUntil]   = useState<Date | null>(null);
+  const [lockCountdown, setLockCountdown] = useState(0);
+  const [pendingAuth, setPendingAuth]   = useState<{ user: any; at: string; rt?: string } | null>(null);
+
+  // Resend cooldown
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const id = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [countdown]);
+
+  // OTP expiry
+  useEffect(() => {
+    if (expiresIn <= 0) return;
+    const id = setTimeout(() => setExpiresIn((e) => e - 1), 1000);
+    return () => clearTimeout(id);
+  }, [expiresIn]);
+
+  // Lockout countdown
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const tick = () => {
+      const secs = Math.ceil((lockedUntil.getTime() - Date.now()) / 1000);
+      if (secs <= 0) { setLockedUntil(null); setLockCountdown(0); return; }
+      setLockCountdown(secs);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
 
   // ── Step 1: Request OTP ─────────────────────────────────
-  const handleRequestOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phone || phone.length < 9) {
-      setError('Please enter a valid phone number');
-      return;
+  const handleRequestOTP = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const normalised = '+66' + phone.replace(/\D/g, '').slice(-9);
+    if (phone.replace(/\D/g, '').length < 9) {
+      setError('Please enter a valid phone number'); return;
     }
     setLoading(true);
     setError('');
+    setDebugCode('');
     try {
-      const res = await apiFetch<{ otpRef: string }>('/auth/request-otp', {
+      const res = await apiFetch<{
+        otpRef: string;
+        debugCode?: string;
+        cooldownSeconds: number;
+        expiresInSeconds: number;
+      }>('/auth/request-otp', {
         method: 'POST',
-        body: { phone: '+66' + phone.slice(-9) },
+        body: { phone: normalised, role: 'DRIVER' },
       });
       setOtpRef(res.otpRef || '');
+      setCountdown(res.cooldownSeconds ?? 60);
+      setExpiresIn(res.expiresInSeconds ?? 300);
+      if (res.debugCode) setDebugCode(res.debugCode);
+      setAttemptsLeft(null);
+      setLockedUntil(null);
+      setOtp('');
       setStep('otp');
-    } catch (err) {
+    } catch (err: any) {
+      const data = err?.data ?? {};
+      if (data.retryAfterSeconds) setCountdown(data.retryAfterSeconds);
       setError(err instanceof Error ? err.message : 'Failed to request OTP');
     } finally {
       setLoading(false);
@@ -50,40 +97,36 @@ export default function LoginPage() {
   };
 
   // ── Step 2: Verify OTP ──────────────────────────────────
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp || otp.length < 4) {
-      setError('Please enter a valid OTP');
-      return;
-    }
+  const handleVerifyOTP = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!otp || otp.length < 6) { setError('Please enter a valid OTP'); return; }
+    if (!otpRef) { setError('Missing OTP reference. Please request a new OTP.'); return; }
     setLoading(true);
     setError('');
     try {
-      const response = await apiFetch<{ user: any; accessToken: string; refreshToken?: string; isNewUser?: boolean }>('/auth/verify-otp', {
-        method: 'POST',
-        body: { phone: '+66' + phone.slice(-9), code: otp, role: 'DRIVER' },
-      });
+      const normalised = '+66' + phone.replace(/\D/g, '').slice(-9);
+      const response = await apiFetch<{ user: any; accessToken: string; refreshToken?: string; isNewUser?: boolean }>(
+        '/auth/verify-otp',
+        { method: 'POST', body: { phone: normalised, otpRef, code: otp, role: 'DRIVER' } }
+      );
       const { user, accessToken, refreshToken, isNewUser } = (response as any).data ?? response;
 
-      // Guard: reject non-DRIVER accounts
       if (user.role && user.role !== 'DRIVER') {
-        setError('เบอร์โทรนี้ลงทะเบียนเป็น Customer อยู่แล้ว\nกรุณาใช้เบอร์โทรอื่นสำหรับบัญชีคนขับ');
+        setError('This number is registered as a Customer.\nPlease use a different number for driver account.');
         return;
       }
 
       if (isNewUser || !user.name) {
-        // New driver — collect name before continuing to onboarding
         setPendingAuth({ user, at: accessToken, rt: refreshToken });
         setStep('profile');
       } else {
-        // Returning driver — go straight based on verificationStatus
         setAuth(user, accessToken, refreshToken);
-        navigate(
-          user.verificationStatus === 'APPROVED' ? '/home' : '/onboarding/profile',
-          { replace: true }
-        );
+        navigate(user.verificationStatus === 'APPROVED' ? '/home' : '/onboarding/profile', { replace: true });
       }
-    } catch (err) {
+    } catch (err: any) {
+      const data = err?.data ?? {};
+      if (data.attemptsRemaining !== undefined) setAttemptsLeft(data.attemptsRemaining);
+      if (data.lockedUntil) setLockedUntil(new Date(data.lockedUntil));
       setError(err instanceof Error ? err.message : 'Failed to verify OTP');
     } finally {
       setLoading(false);
@@ -91,24 +134,15 @@ export default function LoginPage() {
   };
 
   // ── Step 3: Save name ───────────────────────────────────
-  const handleSaveName = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      setError('Please enter your full name');
-      return;
-    }
+  const handleSaveName = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!name.trim()) { setError('Please enter your full name'); return; }
     if (!pendingAuth) return;
     setLoading(true);
     setError('');
     try {
-      // Set token temporarily to allow the PATCH call
       localStorage.setItem('fg_access_token', pendingAuth.at);
-
-      await apiFetch('/users/me', {
-        method: 'PATCH',
-        body: { name: name.trim() },
-      });
-
+      await apiFetch('/users/me', { method: 'PATCH', body: { name: name.trim() } });
       const updatedUser = { ...pendingAuth.user, name: name.trim() };
       setAuth(updatedUser, pendingAuth.at, pendingAuth.rt);
       navigate('/onboarding/profile', { replace: true });
@@ -147,7 +181,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-6 py-10 flex flex-col justify-center">
+        <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col justify-center">
 
           {/* ── STEP 1: PHONE ───────────────────────────── */}
           {step === 'phone' && (
@@ -157,7 +191,6 @@ export default function LoginPage() {
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Driver App</h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm">Sign in or register as a driver</p>
               </div>
-
               <form onSubmit={handleRequestOTP} className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Phone Number</label>
@@ -174,9 +207,7 @@ export default function LoginPage() {
                     />
                   </div>
                 </div>
-
                 {error && <ErrorBox msg={error} />}
-
                 <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
                   {loading ? <Spinner /> : <><span>Send Code</span><span className="material-symbols-outlined">arrow_forward</span></>}
                 </button>
@@ -187,44 +218,78 @@ export default function LoginPage() {
           {/* ── STEP 2: OTP ─────────────────────────────── */}
           {step === 'otp' && (
             <>
-              <div className="text-center mb-8">
+              <div className="text-center mb-6">
                 <div className="w-16 h-16 flex items-center justify-center mx-auto mb-6"><Logo /></div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Enter OTP</h1>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">
-                  Sent to +66{phone.slice(-9)}
-                </p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">Sent to +66{phone.slice(-9)}</p>
               </div>
-
               <form onSubmit={handleVerifyOTP} className="space-y-4">
                 {otpRef && (
                   <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-center">
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">OTP Reference</p>
                     <p className="text-sm font-mono font-bold text-primary tracking-widest">{otpRef}</p>
+                    {expiresIn > 0 && (
+                      <p className="text-xs text-slate-400 mt-1">Expires in {expiresIn}s</p>
+                    )}
                   </div>
                 )}
+
+                {/* Dev debug code */}
+                {debugCode && (
+                  <div className="p-2 bg-amber-50 border border-amber-300 rounded-xl text-center">
+                    <p className="text-xs text-amber-600 font-semibold">🛠 Dev Mode — OTP:</p>
+                    <p className="text-2xl font-mono font-bold text-amber-700 tracking-widest">{debugCode}</p>
+                  </div>
+                )}
+
+                {/* Lockout */}
+                {lockedUntil && lockCountdown > 0 && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-center">
+                    <p className="text-sm text-red-700 font-semibold">🔒 OTP Locked</p>
+                    <p className="text-xs text-red-500 mt-1">Request new code in {Math.ceil(lockCountdown / 60)}m {lockCountdown % 60}s</p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Verification Code</label>
                   <input
                     type="text"
                     value={otp}
-                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '')); setError(''); }}
+                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '')); setError(''); setAttemptsLeft(null); }}
                     placeholder="000000"
                     maxLength={6}
                     autoFocus
-                    className="w-full bg-background-light dark:bg-slate-800 px-4 py-3 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary text-center text-2xl tracking-widest"
+                    disabled={!!lockedUntil}
+                    className="w-full bg-background-light dark:bg-slate-800 px-4 py-3 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary text-center text-2xl tracking-widest disabled:opacity-50"
                   />
+                  {attemptsLeft !== null && attemptsLeft > 0 && (
+                    <p className="text-xs text-red-500 mt-1 text-center">{attemptsLeft} attempts remaining</p>
+                  )}
                 </div>
 
                 {error && <ErrorBox msg={error} />}
 
-                <button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+                <button type="submit" disabled={loading || otp.length !== 6 || !!lockedUntil} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
                   {loading ? <Spinner /> : <><span>Verify</span><span className="material-symbols-outlined">arrow_forward</span></>}
                 </button>
               </form>
 
-              <button onClick={() => setStep('phone')} className="w-full mt-3 text-primary font-semibold py-2 rounded-lg hover:bg-primary/5">
-                Change Phone Number
-              </button>
+              <div className="mt-4 flex flex-col items-center gap-2">
+                {countdown > 0 ? (
+                  <p className="text-sm text-slate-500">Resend in <span className="font-semibold text-primary">{countdown}s</span></p>
+                ) : (
+                  <button
+                    onClick={() => handleRequestOTP()}
+                    disabled={loading}
+                    className="text-primary font-semibold text-sm hover:underline disabled:opacity-50"
+                  >
+                    🔁 Resend OTP
+                  </button>
+                )}
+                <button onClick={() => { setStep('phone'); setOtp(''); setError(''); setLockedUntil(null); }} className="text-slate-400 text-xs hover:text-slate-600">
+                  ← Change Phone Number
+                </button>
+              </div>
             </>
           )}
 
@@ -238,12 +303,9 @@ export default function LoginPage() {
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Your Name</h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm">This will be shown to passengers</p>
               </div>
-
               <form onSubmit={handleSaveName} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">Full Name <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={name}
@@ -253,9 +315,7 @@ export default function LoginPage() {
                     className="w-full bg-background-light dark:bg-slate-800 px-4 py-3 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
-
                 {error && <ErrorBox msg={error} />}
-
                 <button type="submit" disabled={loading || !name.trim()} className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
                   {loading ? <Spinner /> : <><span>Continue to Profile</span><span className="material-symbols-outlined">arrow_forward</span></>}
                 </button>
@@ -264,7 +324,6 @@ export default function LoginPage() {
           )}
 
         </div>
-
         <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-1/3 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
       </div>
     </div>

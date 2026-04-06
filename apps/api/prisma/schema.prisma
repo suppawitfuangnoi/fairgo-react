@@ -624,18 +624,40 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+enum OtpStatus {
+  PENDING      // Active, not yet used
+  USED         // Successfully verified
+  EXPIRED      // Past expiresAt without use
+  LOCKED       // Too many failed attempts — locked until lockedUntil
+  INVALIDATED  // Replaced by a newer OTP request for the same phone+purpose
+}
+
+enum OtpPurpose {
+  CUSTOMER_LOGIN  // Customer app login / register
+  DRIVER_LOGIN    // Driver app login / register
+}
+
 model OtpCode {
-  id           String    @id @default(cuid())
-  phone        String
-  code         String
-  otpRef       String    // Human-readable reference e.g. "REF-A3F7K2" shown to user for lookup
+  id           String     @id @default(cuid())
+  phone        String                           // Always normalised: +66XXXXXXXXX
+  code         String                           // 6-digit numeric string
+  otpRef       String     @unique               // Human-readable ref e.g. REF-A3F7K2
+  purpose      OtpPurpose @default(CUSTOMER_LOGIN)
+  status       OtpStatus  @default(PENDING)
   expiresAt    DateTime
-  attemptCount Int       @default(0)  // Wrong attempts made
-  usedAt       DateTime?              // When code was successfully used
-  ipAddress    String?                // Requester IP for rate-limit auditing
-  createdAt    DateTime  @default(now())
+  attemptCount Int        @default(0)           // Wrong attempts since last request
+  resendCount  Int        @default(0)           // How many times this session has been resent
+  lockedUntil  DateTime?                        // Set when brute-force threshold reached
+  usedAt       DateTime?                        // When code was successfully used
+  ipAddress    String?                          // Requester IP for rate-limit auditing
+  userAgent    String?                          // Browser / app user-agent
+  metadata     Json?                            // Optional: { deviceType, appVersion, … }
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@index([phone])
+  @@index([phone, purpose, status])
+  @@index([otpRef])
   @@index([expiresAt])
   @@map("otp_codes")
 }

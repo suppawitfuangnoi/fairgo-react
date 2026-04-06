@@ -10,6 +10,9 @@
     "start:socket": "NODE_ENV=production node dist-server/server.js",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "db:generate": "prisma generate --schema=./prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=./prisma/schema.prisma",
     "db:push": "prisma db push --schema=./prisma/schema.prisma",
@@ -43,6 +46,9 @@
     "ts-node": "^10.9.2",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
-    "@types/eslint": "^8.56.0"
+    "@types/eslint": "^8.56.0",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "vite-tsconfig-paths": "^4.3.2"
   }
 }

@@ -2,19 +2,30 @@ import { z } from "zod";
 
 // ==================== Auth Schemas ====================
 
+// Accept +66XXXXXXXXX, 0XXXXXXXXX, or 9-digit bare (all normalised server-side)
+const thaiPhoneSchema = z
+  .string()
+  .min(9)
+  .max(15)
+  .refine(
+    (v) => /^(\+66\d{9}|0\d{9}|\d{9})$/.test(v.replace(/[\s\-]/g, "")),
+    "Invalid Thai phone number (use 0812345678 or +66812345678)"
+  );
+
 export const requestOtpSchema = z.object({
-  phone: z
-    .string()
-    .regex(/^(\+66|0)\d{8,9}$/, "Invalid Thai phone number format"),
+  phone: thaiPhoneSchema,
+  role:  z.enum(["CUSTOMER", "DRIVER"]).optional().default("CUSTOMER"),
 });
 
 export const verifyOtpSchema = z.object({
-  phone: z
+  phone:  thaiPhoneSchema,
+  otpRef: z.string().min(8).max(16),
+  code:   z
     .string()
-    .regex(/^(\+66|0)\d{8,9}$/, "Invalid Thai phone number format"),
-  code: z.string().length(6, "OTP must be 6 digits"),
-  role: z.enum(["CUSTOMER", "DRIVER"]).optional().default("CUSTOMER"),
-  name: z.string().min(1).max(100).optional(),
+    .length(6, "OTP must be exactly 6 digits")
+    .regex(/^\d{6}$/, "OTP must be numeric"),
+  role:   z.enum(["CUSTOMER", "DRIVER"]).optional().default("CUSTOMER"),
+  name:   z.string().min(1).max(100).optional(),
 });
 
 export const refreshTokenSchema = z.object({
