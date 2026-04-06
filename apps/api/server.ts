@@ -9,12 +9,15 @@ import { parse } from "url";
 import next from "next";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { verifyAccessToken } from "./src/lib/jwt";
+import { PrismaClient } from "@prisma/client";
 
 const dev = process.env.NODE_ENV !== "production";
 const port = parseInt(process.env.PORT || "4000");
 
 const app = next({ dev });
 const handle = app.getRequestHandler();
+
+const prisma = new PrismaClient();
 
 // ──────────────────────────────────────────────
 // In-memory state for active drivers and riders
@@ -28,10 +31,37 @@ interface DriverLocation {
   speed?: number;
   vehicleType?: string;
   updatedAt: number;
+  lastHeartbeatAt: number;
+  isInTrip: boolean;
 }
 
 const onlineDrivers = new Map<string, DriverLocation>(); // userId -> location
-const userSockets = new Map<string, string>(); // userId -> socketId
+const userSockets  = new Map<string, string>();           // userId -> socketId
+
+// ──────────────────────────────────────────────
+// Stale-driver auto-offline timer
+// Mark drivers offline if no heartbeat for >90 s.
+// Drivers actively in a trip (isInTrip) are exempt.
+// ──────────────────────────────────────────────
+const HEARTBEAT_TIMEOUT_MS = 90_000; // 90 s
+
+async function markDriverOffline(userId: string, io: SocketIOServer) {
+  onlineDrivers.delete(userId);
+  try {
+    await prisma.driverProfile.updateMany({
+      where: { userId },
+      data: { isOnline: false },
+    });
+  } catch (err) {
+    console.warn("[Socket] DB offline update failed for", userId, err);
+  }
+  io.to("admin:monitor").emit("driver:status:change", {
+    userId,
+    isOnline: false,
+    reason: "heartbeat_timeout",
+  });
+  console.log(`[Socket] Auto-offline: driver ${userId} (heartbeat timeout)`);
+}
 
 async function main() {
   await app.prepare();
@@ -44,18 +74,32 @@ async function main() {
   const io = new SocketIOServer(httpServer, {
     cors: {
       origin: [
-        "http://localhost:5173", // admin (Vite default)
-        "http://localhost:5174", // customer
-        "http://localhost:5175", // driver
-        process.env.ADMIN_WEB_URL || "http://localhost:5173",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        process.env.ADMIN_WEB_URL   || "http://localhost:5173",
         process.env.CUSTOMER_APP_URL || "http://localhost:5174",
-        process.env.DRIVER_APP_URL || "http://localhost:5175",
+        process.env.DRIVER_APP_URL  || "http://localhost:5175",
       ],
       methods: ["GET", "POST"],
       credentials: true,
     },
     transports: ["websocket", "polling"],
   });
+
+  // ──────────────────────────────────────────────
+  // Stale-driver sweep every 60 s
+  // ──────────────────────────────────────────────
+  setInterval(() => {
+    const now = Date.now();
+    for (const [userId, loc] of onlineDrivers.entries()) {
+      if (loc.isInTrip) continue; // never auto-offline a driver in a trip
+      const age = now - loc.lastHeartbeatAt;
+      if (age > HEARTBEAT_TIMEOUT_MS) {
+        markDriverOffline(userId, io).catch(() => {});
+      }
+    }
+  }, 60_000);
 
   // ──────────────────────────────────────────────
   // Authentication middleware
@@ -83,9 +127,9 @@ async function main() {
   // ──────────────────────────────────────────────
   io.on("connection", (socket: Socket) => {
     const user = (socket as Socket & { user: { userId: string; role: string } }).user;
-    console.log(`[Socket.IO] Connected: ${user.userId} (${user.role})`);
+    console.log(`[Socket.IO] Connected: ${user.userId} (${user.role}) sid=${socket.id}`);
 
-    // Track socket <-> userId
+    // Track socket <-> userId (update on reconnect)
     userSockets.set(user.userId, socket.id);
 
     // Join user's personal room
@@ -107,6 +151,73 @@ async function main() {
     }
 
     // ──────────────────────────────────────────────
+    // Generic room join — lets clients rejoin trip/ride rooms after reconnect
+    // ──────────────────────────────────────────────
+    socket.on("join:room", (payload: string | { room: string }) => {
+      const room = typeof payload === "string" ? payload : payload?.room;
+      if (!room) return;
+      // Security: only allow joining rooms the user is permitted to access
+      const allowed =
+        room === `user:${user.userId}` ||
+        room === `driver:${user.userId}` ||
+        room === `customer:${user.userId}` ||
+        room.startsWith("trip:") ||
+        room.startsWith("ride:") ||
+        room.startsWith("zone:");
+      if (!allowed) {
+        console.warn(`[Socket.IO] join:room denied: ${user.userId} -> ${room}`);
+        return;
+      }
+      socket.join(room);
+      console.log(`[Socket.IO] ${user.userId} joined ${room}`);
+    });
+
+    socket.on("leave:room", (payload: string | { room: string }) => {
+      const room = typeof payload === "string" ? payload : payload?.room;
+      if (room) socket.leave(room);
+    });
+
+    // ──────────────────────────────────────────────
+    // Driver: heartbeat
+    // ──────────────────────────────────────────────
+    socket.on("driver:heartbeat", async (data?: { tripId?: string }) => {
+      if (user.role !== "DRIVER") return;
+
+      const now = Date.now();
+      const existing = onlineDrivers.get(user.userId);
+      const isInTrip = Boolean(data?.tripId || existing?.isInTrip);
+
+      if (existing) {
+        existing.lastHeartbeatAt = now;
+        existing.isInTrip = isInTrip;
+      } else {
+        // Heartbeat arrived before driver:online — treat as implicit online
+        onlineDrivers.set(user.userId, {
+          driverId: user.userId,
+          userId: user.userId,
+          lat: 0,
+          lng: 0,
+          updatedAt: now,
+          lastHeartbeatAt: now,
+          isInTrip,
+        });
+      }
+
+      // Persist lastSeenAt to DB (best-effort, non-blocking)
+      prisma.driverProfile.updateMany({
+        where: { userId: user.userId },
+        data: { lastSeenAt: new Date(now) },
+      }).catch(() => {});
+
+      // Notify admin monitor
+      io.to("admin:monitor").emit("driver:heartbeat", {
+        userId: user.userId,
+        timestamp: now,
+        isInTrip,
+      });
+    });
+
+    // ──────────────────────────────────────────────
     // Driver: update GPS location
     // ──────────────────────────────────────────────
     socket.on(
@@ -121,6 +232,7 @@ async function main() {
       }) => {
         if (user.role !== "DRIVER") return;
 
+        const now = Date.now();
         const location: DriverLocation = {
           driverId: user.userId,
           userId: user.userId,
@@ -129,9 +241,21 @@ async function main() {
           heading: data.heading,
           speed: data.speed,
           vehicleType: data.vehicleType,
-          updatedAt: Date.now(),
+          updatedAt: now,
+          lastHeartbeatAt: onlineDrivers.get(user.userId)?.lastHeartbeatAt ?? now,
+          isInTrip: Boolean(data.tripId),
         };
         onlineDrivers.set(user.userId, location);
+
+        // Persist location to DB (best-effort)
+        prisma.driverProfile.updateMany({
+          where: { userId: user.userId },
+          data: {
+            currentLatitude: data.lat,
+            currentLongitude: data.lng,
+            lastLocationUpdate: new Date(now),
+          },
+        }).catch(() => {});
 
         // Broadcast to zone room based on rough lat/lng grid
         const zone = `zone:${Math.floor(data.lat * 10)}:${Math.floor(data.lng * 10)}`;
@@ -150,18 +274,49 @@ async function main() {
     // ──────────────────────────────────────────────
     // Driver: go online/offline
     // ──────────────────────────────────────────────
-    socket.on("driver:online", (data: { vehicleType?: string }) => {
+    socket.on("driver:online", async (data: { vehicleType?: string; tripId?: string }) => {
       if (user.role !== "DRIVER") return;
+
+      const now = Date.now();
+      const existing = onlineDrivers.get(user.userId);
+      onlineDrivers.set(user.userId, {
+        ...(existing ?? { lat: 0, lng: 0 }),
+        driverId: user.userId,
+        userId: user.userId,
+        vehicleType: data?.vehicleType ?? existing?.vehicleType,
+        updatedAt: now,
+        lastHeartbeatAt: now,
+        isInTrip: Boolean(data?.tripId),
+      });
+
+      // Persist to DB
+      prisma.driverProfile.updateMany({
+        where: { userId: user.userId },
+        data: { isOnline: true, lastSeenAt: new Date(now) },
+      }).catch(() => {});
+
       io.to("admin:monitor").emit("driver:status:change", {
         userId: user.userId,
         isOnline: true,
         vehicleType: data?.vehicleType,
       });
+
+      // If reconnecting mid-trip, rejoin trip room
+      if (data?.tripId) {
+        socket.join(`trip:${data.tripId}`);
+        console.log(`[Socket.IO] Driver ${user.userId} rejoined trip:${data.tripId} on reconnect`);
+      }
     });
 
-    socket.on("driver:offline", () => {
+    socket.on("driver:offline", async () => {
       if (user.role !== "DRIVER") return;
       onlineDrivers.delete(user.userId);
+
+      prisma.driverProfile.updateMany({
+        where: { userId: user.userId },
+        data: { isOnline: false },
+      }).catch(() => {});
+
       io.to("admin:monitor").emit("driver:status:change", {
         userId: user.userId,
         isOnline: false,
@@ -227,15 +382,43 @@ async function main() {
     // ──────────────────────────────────────────────
     // Disconnect
     // ──────────────────────────────────────────────
-    socket.on("disconnect", () => {
-      console.log(`[Socket.IO] Disconnected: ${user.userId}`);
-      userSockets.delete(user.userId);
+    socket.on("disconnect", (reason) => {
+      console.log(`[Socket.IO] Disconnected: ${user.userId} reason=${reason}`);
+
+      // Only remove from userSockets if this socket is still the current one
+      // (a reconnect may have already replaced it)
+      if (userSockets.get(user.userId) === socket.id) {
+        userSockets.delete(user.userId);
+      }
+
       if (user.role === "DRIVER") {
-        onlineDrivers.delete(user.userId);
-        io.to("admin:monitor").emit("driver:status:change", {
-          userId: user.userId,
-          isOnline: false,
-        });
+        const loc = onlineDrivers.get(user.userId);
+        // For transport-level drops, don't immediately mark offline —
+        // the stale-driver timer will handle it if they don't reconnect.
+        // Only explicitly mark offline for intentional disconnects.
+        const intentional = reason === "server namespace disconnect" || reason === "client namespace disconnect";
+
+        if (intentional) {
+          onlineDrivers.delete(user.userId);
+          prisma.driverProfile.updateMany({
+            where: { userId: user.userId },
+            data: { isOnline: false },
+          }).catch(() => {});
+          io.to("admin:monitor").emit("driver:status:change", {
+            userId: user.userId,
+            isOnline: false,
+            reason,
+          });
+        } else {
+          // Transport drop — mark as disconnected in admin but keep in onlineDrivers
+          // until heartbeat timeout so brief reconnects don't flap the UI
+          io.to("admin:monitor").emit("driver:status:change", {
+            userId: user.userId,
+            isOnline: true,
+            reconnecting: true,
+            lastHeartbeatAt: loc?.lastHeartbeatAt,
+          });
+        }
       }
     });
   });
@@ -243,8 +426,10 @@ async function main() {
   // ──────────────────────────────────────────────
   // Helpers exported for API routes to use
   // ──────────────────────────────────────────────
-  // Store io on global so API routes can emit
+  // Store io and onlineDrivers on global so API routes can access them
   (global as Record<string, unknown>).__socketIO = io;
+  (global as Record<string, unknown>).__onlineDrivers = onlineDrivers;
+  (global as Record<string, unknown>).__userSockets = userSockets;
 
   httpServer.listen(port, () => {
     console.log(`> FAIRGO API + Socket.IO ready on http://localhost:${port}`);

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth.store';
+import { useActiveSession } from '@/hooks/useActiveSession';
 
 // Pages
 import SplashPage from '@/pages/SplashPage';
@@ -19,6 +20,8 @@ import NotificationsPage from '@/pages/NotificationsPage';
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  // Restore active trip and online presence on mount and reconnect
+  useActiveSession();
 
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;

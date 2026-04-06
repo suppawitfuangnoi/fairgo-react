@@ -207,6 +207,7 @@ model DriverProfile {
   userId              String                   @unique
   licenseNumber       String?
   isOnline            Boolean                  @default(false)
+  lastSeenAt          DateTime?
   isVerified          Boolean                  @default(false)
   verificationStatus  DriverVerificationStatus @default(PENDING)
   currentLatitude     Float?
