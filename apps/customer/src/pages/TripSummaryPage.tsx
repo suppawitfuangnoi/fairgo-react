@@ -33,6 +33,7 @@ export default function TripSummaryPage() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+  const [disputeSubmitted, setDisputeSubmitted] = useState(false);
 
   useEffect(() => {
     const fetchTrip = async () => {
@@ -320,14 +321,30 @@ export default function TripSummaryPage() {
           </div>
         </div>
 
-        {/* Support Link */}
+        {/* Payment dispute link */}
         <div className="text-center mb-8">
-          <a
-            href="#"
-            className="text-sm text-slate-400 hover:text-primary transition-colors duration-200"
-          >
-            แจ้งปัญหากับการเดินทางนี้
-          </a>
+          {disputeSubmitted ? (
+            <p className="text-sm text-emerald-500 font-medium">✓ ส่งรายงานปัญหาแล้ว ทีมงานกำลังตรวจสอบ</p>
+          ) : (
+            <button
+              onClick={async () => {
+                const reason = window.prompt('อธิบายปัญหาที่เกิดขึ้น (อย่างน้อย 5 ตัวอักษร):');
+                if (!reason || reason.trim().length < 5) return;
+                try {
+                  await apiFetch(`/trips/${id}/report-dispute`, {
+                    method: 'POST',
+                    body: { reason: reason.trim(), category: 'OTHER' },
+                  });
+                  setDisputeSubmitted(true);
+                } catch {
+                  alert('ไม่สามารถส่งรายงานได้ กรุณาลองใหม่');
+                }
+              }}
+              className="text-sm text-slate-400 hover:text-red-500 transition-colors duration-200 underline-offset-2 hover:underline"
+            >
+              แจ้งปัญหาการชำระเงิน
+            </button>
+          )}
         </div>
       </div>
 
@@ -343,12 +360,13 @@ export default function TripSummaryPage() {
           ) : (
             <button
               onClick={async () => {
-                if (paymentLoading) return;
+                if (paymentLoading || !id) return;
                 setPaymentLoading(true);
                 try {
-                  await apiFetch('/payments', {
+                  // Uses confirm-payment endpoint so passenger confirmation is
+                  // recorded on the Payment record (advisory; trip already COMPLETED)
+                  await apiFetch(`/trips/${id}/confirm-payment`, {
                     method: 'POST',
-                    body: { tripId: trip.id, method: 'CASH' },
                   }).catch(() => {});
                   setPaymentConfirmed(true);
                 } finally {
@@ -363,7 +381,7 @@ export default function TripSummaryPage() {
               ) : (
                 <span className="material-icons-round text-xl">payments</span>
               )}
-              <span>{paymentLoading ? 'กำลังดำเนินการ...' : 'ยืนยันการชำระเงิน (เงินสด)'}</span>
+              <span>{paymentLoading ? 'กำลังดำเนินการ...' : 'ยืนยันการชำระเงินแล้ว (เงินสด)'}</span>
             </button>
           )}
 

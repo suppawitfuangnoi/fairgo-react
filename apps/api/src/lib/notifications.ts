@@ -32,6 +32,7 @@ export type NotificationType =
   | "TRIP_COMPLETED"
   | "TRIP_CANCELLED"
   | "DISPUTE_CREATED"
+  | "DISPUTE_RESOLVED"
   | "OFFER_EXPIRED"
   | "SYSTEM_ALERT"
   | "OTP_DEBUG_INFO"
@@ -346,6 +347,38 @@ export const Notif = {
       relatedEntityType: "offer",
       relatedEntityId: offerId,
       payload: { offerId },
+    }),
+
+  disputeCreated: (
+    reporterUserId: string,
+    tripId: string,
+    ticketId: string,
+    fare: number
+  ) =>
+    createAndEmitNotification({
+      userId: reporterUserId,
+      type: "DISPUTE_CREATED",
+      title: "⚠️ Dispute Reported",
+      body: `Your payment dispute for ฿${fare} has been received. We will review it shortly.`,
+      relatedEntityType: "trip",
+      relatedEntityId: tripId,
+      payload: { tripId, ticketId, fare },
+    }),
+
+  disputeResolved: (
+    reporterUserId: string,
+    tripId: string,
+    ticketId: string,
+    resolutionNote: string
+  ) =>
+    createAndEmitNotification({
+      userId: reporterUserId,
+      type: "DISPUTE_RESOLVED",
+      title: "✅ Dispute Resolved",
+      body: resolutionNote,
+      relatedEntityType: "trip",
+      relatedEntityId: tripId,
+      payload: { tripId, ticketId },
     }),
 
   systemAlert: (userId: string, title: string, message: string) =>

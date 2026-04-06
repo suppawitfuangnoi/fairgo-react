@@ -124,6 +124,7 @@ enum NotificationType {
   TRIP_COMPLETED         // Sent to both parties on trip complete
   TRIP_CANCELLED         // Sent to affected party on cancellation
   DISPUTE_CREATED        // Admin notification on new dispute
+  DISPUTE_RESOLVED       // Sent to reporter when admin resolves dispute
   SYSTEM_ALERT           // Platform-wide system messages
   OTP_DEBUG_INFO         // Non-production OTP debug (admin only)
   // ── Legacy (kept for backward compat) ───────────────────────────
@@ -431,12 +432,23 @@ model Payment {
   driverConfirmedAt     DateTime?     // When driver confirmed cash received
   passengerConfirmedAt  DateTime?     // When passenger confirmed payment
   paidAt                DateTime?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+
+  // ── Dispute support ───────────────────────────────────────────────
+  disputeFlag           Boolean   @default(false)   // true while dispute is open
+  disputeReason         String?                     // Passenger-reported reason
+  disputeRaisedAt       DateTime?                   // When dispute was raised
+  disputeRaisedBy       String?                     // userId of the reporter
+  disputeResolvedAt     DateTime?                   // When admin resolved dispute
+  disputeResolvedBy     String?                     // adminUserId
+  disputeResolutionNote String?                     // Admin resolution note
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
   @@index([status])
+  @@index([disputeFlag])
   @@index([createdAt])
   @@map("payments")
 }
@@ -612,6 +624,7 @@ model SupportTicket {
   status      SupportTicketStatus   @default(OPEN)
   priority    SupportTicketPriority @default(MEDIUM)
   assignedTo  String?
+  resolution  String?               // Admin resolution notes
   resolvedAt  DateTime?
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
@@ -619,6 +632,7 @@ model SupportTicket {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([tripId])
   @@index([status])
   @@index([priority])
   @@index([createdAt])

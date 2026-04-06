@@ -119,6 +119,17 @@ export default function TripActivePage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const tripIdRef = useRef<string | null>(null);
 
+  // ── Payment confirmation state ───────────────────────────────────────────
+  const [paymentConfirmed, setPaymentConfirmed]   = useState(false);
+  const [paymentLoading, setPaymentLoading]       = useState(false);
+
+  // ── Dispute state ────────────────────────────────────────────────────────
+  const [disputeModalOpen, setDisputeModalOpen]   = useState(false);
+  const [disputeReason, setDisputeReason]         = useState('');
+  const [disputeCategory, setDisputeCategory]     = useState<'WRONG_AMOUNT'|'DRIVER_REFUSED'|'RECEIPT_MISSING'|'OTHER'>('OTHER');
+  const [disputeLoading, setDisputeLoading]       = useState(false);
+  const [disputeSubmitted, setDisputeSubmitted]   = useState(false);
+
   const scrollChatToBottom = useCallback(() => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   }, []);
@@ -187,9 +198,13 @@ export default function TripActivePage() {
       }
     };
 
+    // Payment events
+    const onPaymentConfirmed = () => setPaymentConfirmed(true);
+
     socket.on(socketEvents.ON_TRIP_STATUS, onTripStatus);
     socket.on('trip:driver:location', onDriverLocation);
     socket.on('chat:message', onChatMessage);
+    socket.on('trip:payment_confirmed', onPaymentConfirmed);
 
     pollIntervalRef.current = setInterval(fetchTrip, 10000);
 
@@ -197,6 +212,7 @@ export default function TripActivePage() {
       socket.off(socketEvents.ON_TRIP_STATUS, onTripStatus);
       socket.off('trip:driver:location', onDriverLocation);
       socket.off('chat:message', onChatMessage);
+      socket.off('trip:payment_confirmed', onPaymentConfirmed);
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, [navigate, scrollChatToBottom]);
@@ -237,6 +253,38 @@ export default function TripActivePage() {
     setChatInput('');
     scrollChatToBottom();
     socketClient.emit('chat:message', { tripId: trip.id, text, fromRole: 'CUSTOMER' });
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!trip || paymentLoading || paymentConfirmed) return;
+    setPaymentLoading(true);
+    try {
+      await apiFetch(`/trips/${trip.id}/confirm-payment`, { method: 'POST' });
+      setPaymentConfirmed(true);
+      toast.success('ยืนยันการชำระเงินแล้ว!');
+    } catch {
+      toast.error('ไม่สามารถยืนยันการชำระเงินได้');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const handleSubmitDispute = async () => {
+    if (!trip || disputeLoading || disputeReason.trim().length < 5) return;
+    setDisputeLoading(true);
+    try {
+      await apiFetch(`/trips/${trip.id}/report-dispute`, {
+        method: 'POST',
+        body: { reason: disputeReason.trim(), category: disputeCategory },
+      });
+      setDisputeSubmitted(true);
+      setDisputeModalOpen(false);
+      toast.success('ส่งรายงานปัญหาแล้ว ทีมงานจะติดต่อกลับ');
+    } catch {
+      toast.error('ไม่สามารถส่งรายงานได้');
+    } finally {
+      setDisputeLoading(false);
+    }
   };
 
   const getStatusText = (status?: string): string => {
@@ -446,16 +494,57 @@ export default function TripActivePage() {
             </a>
           </div>
 
-          {/* AWAITING_CASH_CONFIRMATION — prompt passenger to pay driver */}
+          {/* AWAITING_CASH_CONFIRMATION — full payment panel */}
           {trip.status === 'AWAITING_CASH_CONFIRMATION' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-1 flex items-start gap-3">
-              <span className="material-icons-round text-amber-500 text-2xl mt-0.5">payments</span>
-              <div>
-                <p className="text-sm font-bold text-amber-800">กรุณาชำระเงินสด</p>
-                <p className="text-xs text-amber-600 mt-0.5">
-                  กรุณาชำระเงินสด <span className="font-bold">฿{trip.fare}</span> ให้กับคนขับ
-                </p>
+            <div className="mb-3 space-y-2">
+              {/* Fare summary */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="material-icons-round text-amber-500 text-2xl">payments</span>
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">กรุณาชำระเงินสด</p>
+                    <p className="text-xs text-amber-600 mt-0.5">จ่ายให้คนขับตอนนี้</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-amber-700">฿{trip.fare}</span>
               </div>
+
+              {/* "I have paid" button */}
+              {paymentConfirmed ? (
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                  <span className="material-icons-round text-emerald-500">check_circle</span>
+                  <span className="text-sm font-semibold text-emerald-700">คุณยืนยันการชำระแล้ว</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConfirmPayment}
+                  disabled={paymentLoading}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 text-white font-bold rounded-xl active:scale-95 transition-all disabled:opacity-60 shadow-sm shadow-emerald-500/30"
+                >
+                  {paymentLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <span className="material-icons-round">thumb_up</span>
+                  )}
+                  {paymentLoading ? 'กำลังดำเนินการ...' : 'ฉันชำระเงินแล้ว'}
+                </button>
+              )}
+
+              {/* Report dispute */}
+              {disputeSubmitted ? (
+                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                  <span className="material-icons-round text-orange-400 text-sm">flag</span>
+                  <span className="text-xs font-medium text-orange-700">ส่งรายงานปัญหาแล้ว ทีมงานกำลังตรวจสอบ</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setDisputeModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-300 text-red-500 text-sm font-semibold rounded-xl hover:bg-red-50 transition"
+                >
+                  <span className="material-icons-round text-base">report_problem</span>
+                  แจ้งปัญหาการชำระเงิน
+                </button>
+              )}
             </div>
           )}
 
@@ -478,6 +567,66 @@ export default function TripActivePage() {
           )}
         </div>
       </div>
+
+      {/* ── DISPUTE MODAL ── */}
+      {disputeModalOpen && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-end">
+          <div className="w-full bg-white rounded-t-3xl p-6 pb-10 shadow-2xl">
+            <div className="w-10 h-1.5 bg-slate-200 rounded-full mx-auto mb-5"></div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">แจ้งปัญหาการชำระเงิน</h3>
+            <p className="text-sm text-slate-500 mb-5">ทีมงาน FairGo จะตรวจสอบและติดต่อกลับภายใน 24 ชั่วโมง</p>
+
+            {/* Category */}
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">ประเภทปัญหา</p>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {([
+                { value: 'WRONG_AMOUNT',     label: 'ยอดเงินไม่ถูกต้อง' },
+                { value: 'DRIVER_REFUSED',   label: 'คนขับปฏิเสธรับเงิน' },
+                { value: 'RECEIPT_MISSING',  label: 'ไม่มีใบเสร็จ' },
+                { value: 'OTHER',            label: 'อื่นๆ' },
+              ] as { value: typeof disputeCategory; label: string }[]).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setDisputeCategory(opt.value)}
+                  className={`py-2 px-3 rounded-xl text-sm font-medium border transition-all ${
+                    disputeCategory === opt.value
+                      ? 'bg-red-50 border-red-400 text-red-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Reason */}
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">รายละเอียด</p>
+            <textarea
+              value={disputeReason}
+              onChange={e => setDisputeReason(e.target.value)}
+              placeholder="อธิบายปัญหาที่เกิดขึ้น..."
+              rows={3}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-300 resize-none mb-4"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDisputeModalOpen(false); setDisputeReason(''); }}
+                className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleSubmitDispute}
+                disabled={disputeLoading || disputeReason.trim().length < 5}
+                className="flex-1 py-3.5 rounded-xl bg-red-500 text-white font-bold text-sm active:scale-95 disabled:opacity-50 transition-all"
+              >
+                {disputeLoading ? 'กำลังส่ง...' : 'ส่งรายงาน'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── CHAT PANEL (slides up) ── */}
       {chatOpen && (

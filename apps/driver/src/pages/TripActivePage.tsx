@@ -171,6 +171,11 @@ export default function TripActivePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  // Payment state: tracks whether driver has confirmed cash received
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  // Tracks whether passenger has confirmed "I have paid" on their side
+  const [passengerConfirmed, setPassengerConfirmed] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const positionRef = useRef(position);
@@ -220,6 +225,15 @@ export default function TripActivePage() {
     };
     socket.on(socketEvents.ON_TRIP_STATUS, onTripStatus);
 
+    // Passenger confirmed "I have paid" — advisory signal for driver visibility
+    const onPaymentConfirmed = (data: { tripId: string }) => {
+      if (tripRef.current?.id && data.tripId === tripRef.current.id) {
+        setPassengerConfirmed(true);
+        toast.info('ผู้โดยสารยืนยันชำระเงินแล้ว — กรุณายืนยันรับเงินสด');
+      }
+    };
+    socket.on('trip:payment_confirmed', onPaymentConfirmed);
+
     // In-app chat: receive messages from customer
     const onChatMessage = (msg: { fromRole: string; text: string; timestamp: string }) => {
       if (msg.fromRole === 'CUSTOMER') {
@@ -268,6 +282,7 @@ export default function TripActivePage() {
 
     return () => {
       socket.off(socketEvents.ON_TRIP_STATUS, onTripStatus);
+      socket.off('trip:payment_confirmed', onPaymentConfirmed);
       socket.off('chat:message', onChatMessage);
       clearInterval(pollRef.current!);
       clearInterval(locationInterval);
@@ -297,9 +312,46 @@ export default function TripActivePage() {
 
   const progress = STATUS_PROGRESS[trip.status];
 
+  const handleConfirmCashReceived = async () => {
+    // Duplicate-click guard: if already confirmed or currently loading, bail immediately
+    if (paymentConfirmed || paymentLoading) return;
+
+    // Optimistically disable the button before the network round-trip
+    setPaymentLoading(true);
+    setError('');
+
+    try {
+      const res = await apiFetch<{ tripCompleted: boolean }>(`/trips/${trip.id}/confirm-payment`, {
+        method: 'POST',
+      });
+      // Mark confirmed regardless of tripCompleted — ensures idempotency if called again
+      setPaymentConfirmed(true);
+      if (res?.tripCompleted) {
+        toast.success('ยืนยันรับเงินสดแล้ว! การเดินทางเสร็จสิ้น');
+        setTimeout(() => navigate(`/trip-summary/${trip.id}`, { replace: true }), 1200);
+      } else {
+        // Server already processed (idempotent 200) — still navigate to summary
+        toast.success('ยืนยันการชำระเงินแล้ว');
+        setTimeout(() => navigate(`/trip-summary/${trip.id}`, { replace: true }), 1200);
+      }
+    } catch (err) {
+      // Reset so driver can retry — do NOT set paymentConfirmed on failure
+      setPaymentLoading(false);
+      toast.error('ไม่สามารถยืนยันการชำระเงินได้ กรุณาลองใหม่');
+      setError(err instanceof Error ? err.message : 'Failed to confirm payment');
+    }
+    // Note: intentionally no finally{setPaymentLoading(false)} — keep button disabled after success
+  };
+
   const handleNextStatus = async () => {
     if (TERMINAL_STATUSES.has(trip.status)) {
       navigate(`/trip-summary/${trip.id}`, { replace: true });
+      return;
+    }
+
+    // Cash confirmation is handled by its own dedicated handler
+    if (trip.status === 'AWAITING_CASH_CONFIRMATION') {
+      await handleConfirmCashReceived();
       return;
     }
 
@@ -307,18 +359,6 @@ export default function TripActivePage() {
     setError('');
 
     try {
-      if (trip.status === 'AWAITING_CASH_CONFIRMATION') {
-        // Cash confirmation uses its own dedicated endpoint
-        const res = await apiFetch<{ tripCompleted: boolean }>(`/trips/${trip.id}/confirm-payment`, {
-          method: 'POST',
-        });
-        if (res?.tripCompleted) {
-          toast.success('ยืนยันรับเงินสดแล้ว! การเดินทางเสร็จสิ้น');
-          setTimeout(() => navigate(`/trip-summary/${trip.id}`, { replace: true }), 1000);
-        }
-        return;
-      }
-
       const nextStatus = NEXT_STATUS[trip.status];
       if (!nextStatus) {
         setError('ไม่สามารถเปลี่ยนสถานะได้');
@@ -532,37 +572,76 @@ export default function TripActivePage() {
                 </button>
               </div>
 
-              {/* AWAITING_CASH_CONFIRMATION — cash payment banner */}
+              {/* AWAITING_CASH_CONFIRMATION — cash payment panel */}
               {trip.status === 'AWAITING_CASH_CONFIRMATION' && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-3 mb-3 flex items-start gap-3">
-                  <span className="material-icons-round text-amber-500 text-xl mt-0.5">payments</span>
-                  <div>
-                    <p className="text-sm font-bold text-amber-800 dark:text-amber-200">รอรับเงินสดจากผู้โดยสาร</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                      จำนวน <span className="font-bold">฿{trip.fare}</span> — กดปุ่มด้านล่างเมื่อได้รับแล้ว
-                    </p>
+                <>
+                  {/* Fare summary */}
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 mb-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="material-icons-round text-amber-500 text-xl">payments</span>
+                        <p className="text-sm font-bold text-amber-800 dark:text-amber-200">รับเงินสดจากผู้โดยสาร</p>
+                      </div>
+                      <div className="text-2xl font-bold text-amber-700 dark:text-amber-300">฿{trip.fare}</div>
+                    </div>
+
+                    {/* Passenger confirmation badge — shown when passenger tapped "I have paid" */}
+                    {passengerConfirmed ? (
+                      <div className="flex items-center gap-2 mt-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-lg px-3 py-2">
+                        <span className="material-icons-round text-emerald-500 text-base">verified</span>
+                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                          ผู้โดยสารยืนยันชำระแล้ว — กรุณากดยืนยันรับเงิน
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        รอผู้โดยสารส่งเงิน — กดปุ่มด้านล่างเมื่อได้รับแล้ว
+                      </p>
+                    )}
                   </div>
-                </div>
+
+                  {/* Cash confirmed success badge — replaces button after confirmation */}
+                  {paymentConfirmed ? (
+                    <div className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl font-bold text-base bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 mb-1">
+                      <span className="material-icons-round text-xl">check_circle</span>
+                      ยืนยันรับเงินแล้ว — กำลังไปหน้าสรุป…
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleConfirmCashReceived}
+                      disabled={paymentLoading}
+                      className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl font-bold text-base bg-amber-500 text-white shadow-lg shadow-amber-500/30 hover:bg-amber-600 active:scale-[0.98] transition-all disabled:opacity-70 mb-1"
+                    >
+                      {paymentLoading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          กำลังยืนยัน…
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-icons-round text-xl">check_circle</span>
+                          ได้รับเงินสดแล้ว ✓
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
               )}
 
-              {/* Primary Status Action Button — hidden for terminal statuses */}
-              {!TERMINAL_STATUSES.has(trip.status) && STATUS_ACTIONS[trip.status] && (
+              {/* Primary Status Action Button — hidden for terminal statuses AND AWAITING_CASH_CONFIRMATION (handled above) */}
+              {!TERMINAL_STATUSES.has(trip.status) &&
+                trip.status !== 'AWAITING_CASH_CONFIRMATION' &&
+                STATUS_ACTIONS[trip.status] && (
                 <button
                   onClick={handleNextStatus}
                   disabled={loading}
-                  className={`w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl font-bold text-base shadow-lg active:scale-[0.98] transition-all disabled:opacity-60 ${
-                    trip.status === 'AWAITING_CASH_CONFIRMATION'
-                      ? 'bg-amber-500 text-white shadow-amber-500/30 hover:bg-amber-600'
-                      : 'bg-primary text-white shadow-primary/30 hover:bg-primary-dark'
-                  }`}
+                  className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl font-bold text-base bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary-dark active:scale-[0.98] transition-all disabled:opacity-60"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span className="material-icons-round text-xl">
-                        {trip.status === 'AWAITING_CASH_CONFIRMATION' ? 'check_circle' : 'arrow_forward'}
-                      </span>
+                      <span className="material-icons-round text-xl">arrow_forward</span>
                       {STATUS_ACTIONS[trip.status]}
                     </>
                   )}
