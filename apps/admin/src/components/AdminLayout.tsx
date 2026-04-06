@@ -20,11 +20,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { label: 'Users', path: '/dashboard/users', icon: 'people' },
     { label: 'Drivers', path: '/dashboard/drivers', icon: 'drive_eta' },
     { label: 'Trips', path: '/dashboard/trips', icon: 'route' },
+    { label: 'Monitoring', path: '/dashboard/monitoring', icon: 'monitor_heart' },
     { label: 'Pricing', path: '/dashboard/pricing', icon: 'payments' },
     { label: 'Disputes', path: '/dashboard/disputes', icon: 'support_agent' },
     { label: 'Analytics', path: '/dashboard/analytics', icon: 'bar_chart' },
     { label: 'Promos', path: '/dashboard/promos', icon: 'local_offer' },
     { label: 'OTP Logs', path: '/dashboard/otp-logs', icon: 'sms' },
+    { label: 'Audit Logs', path: '/dashboard/audit-logs', icon: 'history' },
   ];
 
   const isActive = (path: string) => location.pathname === path;

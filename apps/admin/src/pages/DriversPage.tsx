@@ -12,6 +12,8 @@ interface Driver {
   rating: number;
   trips: number;
   userId: string;
+  isFlagged?: boolean;
+  rejectionReason?: string | null;
 }
 
 export default function DriversPage() {
@@ -25,6 +27,16 @@ export default function DriversPage() {
     action: 'approve' | 'reject';
   } | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+
+  // Rejection reason modal
+  const [rejectModal, setRejectModal] = useState<{ driverId: string; name: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  // Flag modal
+  const [flagModal, setFlagModal] = useState<{ driverId: string; name: string; currently: boolean } | null>(null);
+  const [flagReason, setFlagReason] = useState('');
+  const [flagLoading, setFlagLoading] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -82,6 +94,45 @@ export default function DriversPage() {
       setConfirmDialog(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to reject driver', 'error');
+    }
+  };
+
+  const handleRejectWithReason = async () => {
+    if (!rejectModal || !rejectReason.trim()) return;
+    setRejectLoading(true);
+    try {
+      await apiFetch(`/admin/drivers/${rejectModal.driverId}/verify`, {
+        method: 'POST',
+        body: { status: 'REJECTED', rejectionReason: rejectReason.trim() },
+      });
+      showToast(`${rejectModal.name} rejected`);
+      setRejectModal(null);
+      setRejectReason('');
+      fetchDrivers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to reject driver', 'error');
+    } finally {
+      setRejectLoading(false);
+    }
+  };
+
+  const handleFlagToggle = async () => {
+    if (!flagModal) return;
+    if (!flagModal.currently && !flagReason.trim()) return;
+    setFlagLoading(true);
+    try {
+      await apiFetch(`/admin/drivers/${flagModal.driverId}/flag`, {
+        method: 'POST',
+        body: flagModal.currently ? { flagged: false } : { flagged: true, reason: flagReason.trim() },
+      });
+      showToast(flagModal.currently ? 'Flag cleared' : `${flagModal.name} flagged`);
+      setFlagModal(null);
+      setFlagReason('');
+      fetchDrivers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update flag', 'error');
+    } finally {
+      setFlagLoading(false);
     }
   };
 
@@ -260,6 +311,14 @@ export default function DriversPage() {
                         >
                           <span className="material-symbols-outlined text-xl">edit</span>
                         </button>
+                        {/* Flag / unflag */}
+                        <button
+                          onClick={() => setFlagModal({ driverId: driver.id, name: driver.name, currently: !!driver.isFlagged })}
+                          className={`p-1.5 transition-colors ${driver.isFlagged ? 'text-rose-500 hover:text-rose-700' : 'text-slate-400 hover:text-rose-500'}`}
+                          title={driver.isFlagged ? 'Remove flag' : 'Flag driver'}
+                        >
+                          <span className="material-symbols-outlined text-xl">flag</span>
+                        </button>
                         {driver.status !== 'APPROVED' && (
                           <button
                             onClick={() =>
@@ -272,9 +331,7 @@ export default function DriversPage() {
                         )}
                         {driver.status !== 'REJECTED' && (
                           <button
-                            onClick={() =>
-                              setConfirmDialog({ driverId: driver.id, action: 'reject' })
-                            }
+                            onClick={() => setRejectModal({ driverId: driver.id, name: driver.name })}
                             className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
                           >
                             Reject
@@ -442,6 +499,88 @@ export default function DriversPage() {
                   {selectedDriver.status}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject with reason modal */}
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-1">
+              Reject Driver
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              Provide a reason for rejecting <span className="font-bold text-slate-700 dark:text-slate-200">{rejectModal.name}</span>. This will be stored with their profile.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Incomplete documentation, blurry license photo..."
+              rows={3}
+              className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-400 outline-none resize-none"
+            />
+            <p className="text-xs text-slate-400 mt-1 mb-4">{rejectReason.trim().length}/500 characters</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setRejectModal(null); setRejectReason(''); }}
+                className="px-4 py-2 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectWithReason}
+                disabled={rejectLoading || !rejectReason.trim() || rejectReason.trim().length > 500}
+                className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {rejectLoading ? 'Rejecting…' : 'Reject Driver'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flag / unflag modal */}
+      {flagModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mb-1">
+              {flagModal.currently ? 'Remove Flag' : 'Flag Driver'}
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              {flagModal.currently
+                ? `Clear the suspicious flag on ${flagModal.name}?`
+                : `Flag ${flagModal.name} as suspicious. Provide a reason.`}
+            </p>
+            {!flagModal.currently && (
+              <>
+                <textarea
+                  value={flagReason}
+                  onChange={(e) => setFlagReason(e.target.value)}
+                  placeholder="e.g. Multiple complaints, suspicious behaviour..."
+                  rows={3}
+                  className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-400 outline-none resize-none"
+                />
+                <p className="text-xs text-slate-400 mt-1 mb-4">{flagReason.trim().length}/500 characters</p>
+              </>
+            )}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setFlagModal(null); setFlagReason(''); }}
+                className="px-4 py-2 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFlagToggle}
+                disabled={flagLoading || (!flagModal.currently && (!flagReason.trim() || flagReason.trim().length > 500))}
+                className={`px-4 py-2 rounded-xl text-sm font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                  flagModal.currently ? 'bg-slate-500 hover:bg-slate-600' : 'bg-rose-500 hover:bg-rose-600'
+                }`}
+              >
+                {flagLoading ? 'Saving…' : flagModal.currently ? 'Remove Flag' : 'Flag Driver'}
+              </button>
             </div>
           </div>
         </div>

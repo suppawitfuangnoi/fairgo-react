@@ -9,6 +9,9 @@ interface User {
   phone: string;
   role: string;
   status: 'ACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION';
+  isFlagged?: boolean;
+  flagReason?: string | null;
+  suspendedReason?: string | null;
   createdAt: string;
 }
 
@@ -38,6 +41,16 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', role: '', status: '' });
   const [editLoading, setEditLoading] = useState(false);
+
+  // Suspend with reason modal
+  const [suspendModal, setSuspendModal] = useState<{ userId: string; name: string } | null>(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendLoading, setSuspendLoading] = useState(false);
+
+  // Flag modal
+  const [flagModal, setFlagModal] = useState<{ userId: string; name: string; currently: boolean } | null>(null);
+  const [flagReason, setFlagReason] = useState('');
+  const [flagLoading, setFlagLoading] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -134,6 +147,55 @@ export default function UsersPage() {
       setConfirmDialog(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to reactivate user', 'error');
+    }
+  };
+
+  const handleSuspendWithReason = async () => {
+    if (!suspendModal || !suspendReason.trim()) return;
+    setSuspendLoading(true);
+    try {
+      await apiFetch(`/admin/users/${suspendModal.userId}/suspend`, {
+        method: 'POST',
+        body: { reason: suspendReason.trim() },
+      });
+      showToast(`${suspendModal.name} suspended`);
+      setSuspendModal(null);
+      setSuspendReason('');
+      fetchUsers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to suspend user', 'error');
+    } finally {
+      setSuspendLoading(false);
+    }
+  };
+
+  const handleUnsuspend = async (userId: string) => {
+    try {
+      await apiFetch(`/admin/users/${userId}/unsuspend`, { method: 'POST' });
+      showToast('User reinstated');
+      fetchUsers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to unsuspend user', 'error');
+    }
+  };
+
+  const handleFlagToggle = async () => {
+    if (!flagModal) return;
+    if (flagModal.currently === false && !flagReason.trim()) return;
+    setFlagLoading(true);
+    try {
+      await apiFetch(`/admin/users/${flagModal.userId}/flag`, {
+        method: 'POST',
+        body: flagModal.currently ? { flagged: false } : { flagged: true, reason: flagReason.trim() },
+      });
+      showToast(flagModal.currently ? 'Flag cleared' : `${flagModal.name} flagged`);
+      setFlagModal(null);
+      setFlagReason('');
+      fetchUsers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update flag', 'error');
+    } finally {
+      setFlagLoading(false);
     }
   };
 
@@ -339,14 +401,27 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 text-center font-semibold text-sm">--</td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full ${getStatusColor(
-                          user.status
-                        )}`}
-                      >
-                        <span className={`size-1.5 rounded-full bg-current ${user.status === 'PENDING_VERIFICATION' ? 'animate-pulse' : ''}`}></span>
-                        {user.status === 'PENDING_VERIFICATION' ? 'Pending Verification' : user.status}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full ${getStatusColor(
+                            user.status
+                          )}`}
+                        >
+                          <span className={`size-1.5 rounded-full bg-current ${user.status === 'PENDING_VERIFICATION' ? 'animate-pulse' : ''}`}></span>
+                          {user.status === 'PENDING_VERIFICATION' ? 'Pending Verification' : user.status}
+                        </span>
+                        {user.isFlagged && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700">
+                            <span className="material-symbols-outlined text-[10px]">flag</span>
+                            Flagged
+                          </span>
+                        )}
+                        {user.suspendedReason && user.status === 'SUSPENDED' && (
+                          <span className="text-[10px] text-slate-400 italic max-w-[140px] truncate" title={user.suspendedReason}>
+                            {user.suspendedReason}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
@@ -364,25 +439,29 @@ export default function UsersPage() {
                         >
                           <span className="material-symbols-outlined text-xl">edit</span>
                         </button>
+                        {/* Flag / Unflag */}
+                        <button
+                          onClick={() => setFlagModal({ userId: user.id, name: user.name, currently: !!user.isFlagged })}
+                          className={`p-1.5 transition-colors ${user.isFlagged ? 'text-rose-500 hover:text-rose-700' : 'text-slate-400 hover:text-rose-500'}`}
+                          title={user.isFlagged ? 'Remove flag' : 'Flag user'}
+                        >
+                          <span className="material-symbols-outlined text-xl">flag</span>
+                        </button>
                         {user.status === 'ACTIVE' ? (
                           <button
-                            onClick={() =>
-                              setConfirmDialog({ userId: user.id, action: 'block' })
-                            }
+                            onClick={() => setSuspendModal({ userId: user.id, name: user.name })}
                             className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                            title="Block"
+                            title="Suspend with reason"
                           >
                             <span className="material-symbols-outlined text-xl">block</span>
                           </button>
                         ) : user.status === 'SUSPENDED' ? (
                           <button
-                            onClick={() =>
-                              setConfirmDialog({ userId: user.id, action: 'unblock' })
-                            }
+                            onClick={() => handleUnsuspend(user.id)}
                             className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors"
-                            title="Reactivate"
+                            title="Reinstate"
                           >
-                            Reactivate
+                            Reinstate
                           </button>
                         ) : null}
                       </div>
@@ -748,6 +827,92 @@ export default function UsersPage() {
                   {new Date(selectedUser.createdAt).toLocaleString()}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Suspend with reason modal ── */}
+      {suspendModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="material-symbols-outlined text-orange-500 text-2xl">block</span>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Suspend User</h3>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">
+              Suspending <span className="font-bold text-slate-800 dark:text-slate-200">{suspendModal.name}</span>. Please provide a reason for the audit log.
+            </p>
+            <textarea
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              placeholder="Suspension reason (required)…"
+              rows={3}
+              className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-orange-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-white resize-none"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setSuspendModal(null); setSuspendReason(''); }}
+                className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSuspendWithReason}
+                disabled={suspendLoading || !suspendReason.trim()}
+                className="flex-1 py-2 rounded-xl bg-orange-500 text-white text-sm font-bold disabled:opacity-50 hover:bg-orange-600 transition-colors"
+              >
+                {suspendLoading ? 'Suspending…' : 'Confirm Suspend'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Flag / unflag modal ── */}
+      {flagModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="material-symbols-outlined text-rose-500 text-2xl">flag</span>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {flagModal.currently ? 'Remove Flag' : 'Flag User'}
+              </h3>
+            </div>
+            {flagModal.currently ? (
+              <p className="text-sm text-slate-500 mb-6">
+                Remove flag from <span className="font-bold text-slate-800 dark:text-slate-200">{flagModal.name}</span>?
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-500 mb-4">
+                  Flag <span className="font-bold text-slate-800 dark:text-slate-200">{flagModal.name}</span> for review. Reason will be recorded.
+                </p>
+                <textarea
+                  value={flagReason}
+                  onChange={(e) => setFlagReason(e.target.value)}
+                  placeholder="Flag reason (required)…"
+                  rows={3}
+                  className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm mb-4 focus:ring-2 focus:ring-rose-400 bg-white dark:bg-slate-800 text-slate-900 dark:text-white resize-none"
+                />
+              </>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setFlagModal(null); setFlagReason(''); }}
+                className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFlagToggle}
+                disabled={flagLoading || (!flagModal.currently && !flagReason.trim())}
+                className={`flex-1 py-2 rounded-xl text-white text-sm font-bold disabled:opacity-50 transition-colors ${
+                  flagModal.currently ? 'bg-slate-500 hover:bg-slate-600' : 'bg-rose-500 hover:bg-rose-600'
+                }`}
+              >
+                {flagLoading ? 'Saving…' : flagModal.currently ? 'Remove Flag' : 'Flag User'}
+              </button>
             </div>
           </div>
         </div>

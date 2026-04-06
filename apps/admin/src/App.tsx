@@ -13,6 +13,8 @@ import DisputesPage from '@/pages/DisputesPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import PromosPage from '@/pages/PromosPage';
 import OtpLogsPage from '@/pages/OtpLogsPage';
+import MonitoringPage from '@/pages/MonitoringPage';
+import AuditLogsPage from '@/pages/AuditLogsPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -104,6 +106,24 @@ export default function App() {
           element={
             <ProtectedRoute>
               <OtpLogsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/monitoring"
+          element={
+            <ProtectedRoute>
+              <MonitoringPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/audit-logs"
+          element={
+            <ProtectedRoute>
+              <AuditLogsPage />
             </ProtectedRoute>
           }
         />

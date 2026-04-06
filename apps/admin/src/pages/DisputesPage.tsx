@@ -24,6 +24,8 @@ export default function DisputesPage() {
     disputeId: string;
     action: 'progress' | 'resolve';
   } | null>(null);
+  const [resolveNote, setResolveNote] = useState('');
+  const [resolveLoading, setResolveLoading] = useState(false);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
@@ -60,6 +62,25 @@ export default function DisputesPage() {
       setConfirmDialog(null);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to update dispute', 'error');
+    }
+  };
+
+  const handleResolveWithNote = async () => {
+    if (!confirmDialog || !resolveNote.trim()) return;
+    setResolveLoading(true);
+    try {
+      await apiFetch(`/admin/disputes/${confirmDialog.disputeId}`, {
+        method: 'PATCH',
+        body: { status: 'RESOLVED', resolution: resolveNote.trim() },
+      });
+      showToast('Dispute resolved', 'success');
+      fetchDisputes();
+      setConfirmDialog(null);
+      setResolveNote('');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to resolve dispute', 'error');
+    } finally {
+      setResolveLoading(false);
     }
   };
 
@@ -263,7 +284,7 @@ export default function DisputesPage() {
       {confirmDialog && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setConfirmDialog(null)}
+          onClick={() => { setConfirmDialog(null); setResolveNote(''); }}
         >
           <div
             className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 max-w-sm w-full"
@@ -272,33 +293,50 @@ export default function DisputesPage() {
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
               {confirmDialog.action === 'progress'
                 ? 'Start Dispute Resolution?'
-                : 'Mark as Resolved?'}
+                : 'Mark as Resolved'}
             </h3>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-              {confirmDialog.action === 'progress'
-                ? 'This dispute will be moved to in progress status.'
-                : 'This dispute will be marked as resolved.'}
-            </p>
+            {confirmDialog.action === 'progress' ? (
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                This dispute will be moved to in progress status.
+              </p>
+            ) : (
+              <div className="mb-4">
+                <p className="text-slate-500 dark:text-slate-400 text-sm mb-3">
+                  Add a resolution note explaining how this was resolved.
+                </p>
+                <textarea
+                  value={resolveNote}
+                  onChange={(e) => setResolveNote(e.target.value)}
+                  placeholder="e.g. Refund issued to passenger, driver penalty applied..."
+                  rows={3}
+                  className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-400 outline-none resize-none"
+                />
+                <p className="text-xs text-slate-400 mt-1">{resolveNote.trim().length}/1000</p>
+              </div>
+            )}
             <div className="flex gap-3">
               <button
-                onClick={() => setConfirmDialog(null)}
+                onClick={() => { setConfirmDialog(null); setResolveNote(''); }}
                 className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  const newStatus =
-                    confirmDialog.action === 'progress' ? 'IN_PROGRESS' : 'RESOLVED';
-                  handleStatusChange(confirmDialog.disputeId, newStatus);
+                  if (confirmDialog.action === 'progress') {
+                    handleStatusChange(confirmDialog.disputeId, 'IN_PROGRESS');
+                  } else {
+                    handleResolveWithNote();
+                  }
                 }}
-                className={`flex-1 px-4 py-2 text-white rounded-lg font-bold text-sm transition-colors ${
+                disabled={resolveLoading || (confirmDialog.action === 'resolve' && !resolveNote.trim())}
+                className={`flex-1 px-4 py-2 text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   confirmDialog.action === 'progress'
                     ? 'bg-amber-500 hover:bg-amber-600'
                     : 'bg-emerald-500 hover:bg-emerald-600'
                 }`}
               >
-                Confirm
+                {resolveLoading ? 'Saving…' : confirmDialog.action === 'progress' ? 'Start' : 'Resolve'}
               </button>
             </div>
           </div>

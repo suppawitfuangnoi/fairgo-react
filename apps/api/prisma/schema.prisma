@@ -166,6 +166,14 @@ model User {
   updatedAt DateTime   @updatedAt
   deletedAt DateTime?
 
+  // ── Admin moderation fields ────────────────────────────────────────
+  suspendedReason String?   // Reason provided by admin when suspending
+  suspendedAt     DateTime? // When the suspension took effect
+  isFlagged       Boolean   @default(false)
+  flagReason      String?   // Admin-provided flag reason
+  flaggedAt       DateTime?
+  flaggedBy       String?   // Admin userId who flagged
+
   customerProfile CustomerProfile?
   driverProfile   DriverProfile?
   adminProfile    AdminProfile?
@@ -182,6 +190,7 @@ model User {
   @@index([phone])
   @@index([role])
   @@index([status])
+  @@index([isFlagged])
   @@map("users")
 }
 
@@ -221,6 +230,13 @@ model DriverProfile {
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
 
+  // ── Admin moderation fields ────────────────────────────────────────
+  isFlagged       Boolean   @default(false)
+  flagReason      String?
+  flaggedAt       DateTime?
+  flaggedBy       String?   // Admin userId
+  rejectionReason String?   // Reason when verificationStatus = REJECTED
+
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   vehicles   Vehicle[]
   documents  DriverDocument[]
@@ -230,6 +246,7 @@ model DriverProfile {
 
   @@index([isOnline])
   @@index([verificationStatus])
+  @@index([isFlagged])
   @@index([currentLatitude, currentLongitude])
   @@map("driver_profiles")
 }
