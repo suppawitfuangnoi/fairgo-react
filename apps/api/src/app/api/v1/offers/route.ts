@@ -38,12 +38,14 @@ export async function POST(request: NextRequest) {
       return errorResponse("Ride request is no longer available", 422);
     }
 
-    // Check if driver has a pending offer (can't submit twice while PENDING)
+    // Check if driver has a pending DRIVER-proposed offer (can't submit twice)
+    // Note: customer counter-offers also reference driverProfileId, so we filter by proposedBy
     const existingPendingOffer = await prisma.rideOffer.findFirst({
       where: {
         rideRequestId: result.data.rideRequestId,
         driverProfileId: driverProfile.id,
         status: "PENDING",
+        proposedBy: "DRIVER",
       },
     });
     if (existingPendingOffer) {
