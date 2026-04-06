@@ -9,7 +9,7 @@
  * so a busy-wait scenario across replicas cannot occur.
  */
 
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../prisma";
 import { hostname } from "os";
 
 /** Stable identity for this process across log lines and lock records. */

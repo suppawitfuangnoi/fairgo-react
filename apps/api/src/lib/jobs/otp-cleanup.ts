@@ -10,7 +10,7 @@
  *               the job-lock system.)
  */
 
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../prisma";
 import { acquireLock, releaseLock } from "./job-lock";
 
 const JOB_NAME = "otp-cleanup";

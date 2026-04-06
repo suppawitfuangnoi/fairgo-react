@@ -11,8 +11,8 @@
  *  - All events audit-logged
  */
 
-import { prisma } from "@/lib/prisma";
-import { writeAuditLog } from "@/lib/audit";
+import { prisma } from "./prisma";
+import { writeAuditLog } from "./audit";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const OTP_EXPIRY_MS          = 5 * 60 * 1000;   // 5 min

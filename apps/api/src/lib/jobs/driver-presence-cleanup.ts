@@ -15,8 +15,8 @@
  * are mid-trip with a temporarily interrupted heartbeat.
  */
 
-import { prisma } from "@/lib/prisma";
-import { getIO } from "@/lib/socket";
+import { prisma } from "../prisma";
+import { getIO } from "../socket";
 import { acquireLock, releaseLock } from "./job-lock";
 
 const JOB_NAME = "driver-presence-cleanup";

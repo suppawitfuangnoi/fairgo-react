@@ -13,9 +13,9 @@
  *   - On reconnect/refresh, client fetches /notifications to recover missed events
  */
 
-import { prisma } from "@/lib/prisma";
+import { prisma } from "./prisma";
 import { Prisma } from "@prisma/client";
-import { emitToUser } from "@/lib/socket";
+import { emitToUser } from "./socket";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

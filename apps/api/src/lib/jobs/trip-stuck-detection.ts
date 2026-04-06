@@ -17,8 +17,8 @@
  *  - Socket event monitor:trip_stuck emitted to admin:monitor room
  */
 
-import { prisma } from "@/lib/prisma";
-import { getIO } from "@/lib/socket";
+import { prisma } from "../prisma";
+import { getIO } from "../socket";
 import { acquireLock, releaseLock } from "./job-lock";
 
 const JOB_NAME = "trip-stuck-detection";

@@ -14,9 +14,9 @@
  *  - Admin monitor notified
  */
 
-import { prisma } from "@/lib/prisma";
-import { getIO } from "@/lib/socket";
-import { createAndEmitNotification } from "@/lib/notifications";
+import { prisma } from "../prisma";
+import { getIO } from "../socket";
+import { createAndEmitNotification } from "../notifications";
 import { acquireLock, releaseLock } from "./job-lock";
 
 const JOB_NAME = "ride-request-cleanup";
