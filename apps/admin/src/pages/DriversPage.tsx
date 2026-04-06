@@ -8,7 +8,7 @@ interface Driver {
   phone: string;
   vehicleType: string;
   vehiclePlate: string;
-  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   rating: number;
   trips: number;
   userId: string;
@@ -42,7 +42,7 @@ export default function DriversPage() {
       if (tab === 'all') {
         statusParam = '';
       } else if (tab === 'approved') {
-        statusParam = 'VERIFIED';
+        statusParam = 'APPROVED';
       } else {
         statusParam = tab.toUpperCase();
       }
@@ -60,8 +60,8 @@ export default function DriversPage() {
   const handleApprove = async (driverId: string) => {
     try {
       await apiFetch(`/admin/drivers/${driverId}/verify`, {
-        method: 'PATCH',
-        body: { status: 'VERIFIED' },
+        method: 'POST',
+        body: { status: 'APPROVED' },
       });
       showToast('Driver approved successfully', 'success');
       fetchDrivers();
@@ -74,7 +74,7 @@ export default function DriversPage() {
   const handleReject = async (driverId: string) => {
     try {
       await apiFetch(`/admin/drivers/${driverId}/verify`, {
-        method: 'PATCH',
+        method: 'POST',
         body: { status: 'REJECTED' },
       });
       showToast('Driver rejected', 'success');
@@ -87,7 +87,7 @@ export default function DriversPage() {
 
   const getStatusColor = (st: string) => {
     switch (st) {
-      case 'VERIFIED':
+      case 'APPROVED':
         return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400';
       case 'PENDING':
         return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400';
@@ -103,7 +103,7 @@ export default function DriversPage() {
   const tabCounts = {
     all: drivers.length,
     pending: drivers.filter((d) => d.status === 'PENDING').length,
-    approved: drivers.filter((d) => d.status === 'VERIFIED').length,
+    approved: drivers.filter((d) => d.status === 'APPROVED').length,
     rejected: drivers.filter((d) => d.status === 'REJECTED').length,
   };
 
@@ -260,25 +260,25 @@ export default function DriversPage() {
                         >
                           <span className="material-symbols-outlined text-xl">edit</span>
                         </button>
-                        {driver.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() =>
-                                setConfirmDialog({ driverId: driver.id, action: 'approve' })
-                              }
-                              className="px-4 py-1.5 bg-primary text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
-                            >
-                              Verify
-                            </button>
-                            <button
-                              onClick={() =>
-                                setConfirmDialog({ driverId: driver.id, action: 'reject' })
-                              }
-                              className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
-                            >
-                              Reject
-                            </button>
-                          </>
+                        {driver.status !== 'APPROVED' && (
+                          <button
+                            onClick={() =>
+                              setConfirmDialog({ driverId: driver.id, action: 'approve' })
+                            }
+                            className="px-4 py-1.5 bg-primary text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+                          >
+                            Verify
+                          </button>
+                        )}
+                        {driver.status !== 'REJECTED' && (
+                          <button
+                            onClick={() =>
+                              setConfirmDialog({ driverId: driver.id, action: 'reject' })
+                            }
+                            className="px-4 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+                          >
+                            Reject
+                          </button>
                         )}
                       </div>
                     </td>

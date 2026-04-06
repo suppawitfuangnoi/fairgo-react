@@ -545,7 +545,16 @@ export default function SubmitOfferPage() {
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-400 font-semibold uppercase">ราคาผู้โดยสาร</p>
-              <p className="text-xl font-extrabold text-primary">฿{ride.fareOffer}</p>
+              {ride.fareMin != null && ride.fareMax != null ? (
+                <>
+                  <p className="text-xl font-extrabold text-primary">
+                    ฿{ride.fareMin} – ฿{ride.fareMax}
+                  </p>
+                  <p className="text-xs text-slate-400">เสนอ ฿{ride.fareOffer}</p>
+                </>
+              ) : (
+                <p className="text-xl font-extrabold text-primary">฿{ride.fareOffer}</p>
+              )}
             </div>
           </div>
 
