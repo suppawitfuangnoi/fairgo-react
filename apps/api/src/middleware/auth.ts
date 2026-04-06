@@ -88,33 +88,39 @@ export async function requireActiveAuth(
 
   const user = jwtResult as JwtPayload;
 
+  // Resolve IP outside the DB try/catch so a getClientIp error never
+  // silently bypasses the suspension check.
+  const ipAddress = getClientIp(request);
+
+  let dbUser: { status: string } | null = null;
   try {
-    const dbUser = await prisma.user.findUnique({
+    dbUser = await prisma.user.findUnique({
       where: { id: user.userId },
       select: { status: true },
     });
-
-    if (!dbUser) {
-      return errorResponse("User account not found", 401) as unknown as Response;
-    }
-
-    if (dbUser.status === "SUSPENDED") {
-      writeAuditLog({
-        userId: user.userId,
-        action: "SUSPENDED_USER_ACCESS_ATTEMPT",
-        entity: "Endpoint",
-        entityId: request.nextUrl.pathname,
-        ipAddress: getClientIp(request),
-      }).catch(() => {});
-
-      return errorResponse(
-        "Your account has been suspended. Please contact support.",
-        403
-      ) as unknown as Response;
-    }
   } catch {
     // On DB error, fall back to JWT-only auth to avoid availability issues
     console.error("[AUTH] requireActiveAuth DB check failed — falling back to JWT-only");
+    return user;
+  }
+
+  if (!dbUser) {
+    return errorResponse("User account not found", 401) as unknown as Response;
+  }
+
+  if (dbUser.status === "SUSPENDED") {
+    writeAuditLog({
+      userId: user.userId,
+      action: "SUSPENDED_USER_ACCESS_ATTEMPT",
+      entity: "Endpoint",
+      entityId: request.nextUrl.pathname,
+      ipAddress,
+    }).catch(() => {});
+
+    return errorResponse(
+      "Your account has been suspended. Please contact support.",
+      403
+    ) as unknown as Response;
   }
 
   return user;

@@ -164,6 +164,18 @@ export async function PATCH(
             paidAt: new Date(),
           },
         });
+      } else if (existingPayment.status !== "COMPLETED") {
+        // Payment was created at AWAITING_CASH_CONFIRMATION (status=PENDING).
+        // Mark it COMPLETED now so confirm-payment idempotency check works
+        // correctly and totalTrips cannot be double-incremented.
+        await prisma.payment.update({
+          where: { id: existingPayment.id },
+          data: {
+            status: "COMPLETED",
+            driverConfirmedAt: existingPayment.driverConfirmedAt ?? new Date(),
+            paidAt: new Date(),
+          },
+        });
       }
 
       await Promise.all([
