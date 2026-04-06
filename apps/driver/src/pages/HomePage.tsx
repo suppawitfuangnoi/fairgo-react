@@ -36,7 +36,10 @@ interface RideRequest {
   passengerTrips: number;
   pickupAddress: string;
   dropoffAddress: string;
-  distance: string;
+  /** Trip distance: pickup → dropoff */
+  tripDistance: string;
+  /** Distance from driver's current location → pickup */
+  driverDistance: string;
   duration: string;
   fareOffer: number;
   vehicleType: string;
@@ -85,8 +88,9 @@ export default function HomePage() {
           passengerTrips: r._count?.offers ?? 0,
           pickupAddress: r.pickupAddress,
           dropoffAddress: r.dropoffAddress,
-          distance: r.estimatedDistance ? `${Number(r.estimatedDistance).toFixed(1)} km` : `${r.distanceFromDriver ?? 0} km`,
-          duration: r.estimatedDuration ? `${r.estimatedDuration} min` : '—',
+          tripDistance: r.estimatedDistance ? `${Number(r.estimatedDistance).toFixed(1)} km` : '—',
+          driverDistance: r.distanceFromDriver != null ? `${Number(r.distanceFromDriver).toFixed(1)} km` : '— km',
+          duration: r.estimatedDuration ? `${r.estimatedDuration} นาที` : '—',
           fareOffer: r.fareOffer,
           vehicleType: r.vehicleType,
         })) : [];
@@ -273,7 +277,7 @@ export default function HomePage() {
                           </span>
                           <span>{ride.passengerRating}</span>
                           <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>
-                          <span className="text-primary font-semibold">{ride.distance}</span>
+                          <span className="text-primary font-semibold">{ride.driverDistance}</span>
                         </div>
                       </div>
                     </div>
@@ -312,7 +316,7 @@ export default function HomePage() {
                       </div>
                       <div className="flex-1">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">
-                          Dropoff • {ride.distance}
+                          Dropoff • {ride.tripDistance}
                         </p>
                         <p className="text-base font-bold text-slate-800 dark:text-slate-100 leading-snug">
                           {ride.dropoffAddress}

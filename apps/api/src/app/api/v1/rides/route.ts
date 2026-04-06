@@ -6,6 +6,7 @@ import { validateBody } from "@/middleware/validate";
 import { createRideRequestSchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToRoom } from "@/lib/socket";
+import { calculateDistance, estimateDuration } from "@/lib/pricing";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,10 +30,22 @@ export async function POST(request: NextRequest) {
       return errorResponse("Fare offer must be within min-max range", 422);
     }
 
+    // Calculate trip distance and duration to store with the ride
+    const straightLineKm = calculateDistance(
+      result.data.pickupLatitude,
+      result.data.pickupLongitude,
+      result.data.dropoffLatitude,
+      result.data.dropoffLongitude
+    );
+    const estimatedDistanceKm = straightLineKm * 1.3; // 30% road-distance adjustment
+    const estimatedDurationMin = estimateDuration(estimatedDistanceKm);
+
     const rideRequest = await prisma.rideRequest.create({
       data: {
         customerProfileId: profile.id,
         ...result.data,
+        estimatedDistance: estimatedDistanceKm,
+        estimatedDuration: estimatedDurationMin,
         status: "PENDING",
         expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
       },

@@ -12,8 +12,10 @@ interface FareEstimate {
   fareMin: number;
   fareMax: number;
   recommendedFare: number;
+  /** Distance in metres (road distance ≈ straight-line × 1.3) */
   distance: number;
-  duration: number;
+  /** Estimated trip duration in minutes */
+  estimatedDuration: number;
 }
 
 /** Round down to nearest 5 */
@@ -443,7 +445,20 @@ export default function RideRequestPage() {
 
                       <p className="text-xs text-slate-400">
                         {fareEstimate.distance > 0 ? (
-                          <span>ระยะทาง <span className="font-semibold text-slate-600 dark:text-slate-300">{(fareEstimate.distance / 1000).toFixed(1)} กม.</span></span>
+                          <span>
+                            ระยะทาง{' '}
+                            <span className="font-semibold text-slate-600 dark:text-slate-300">
+                              {(fareEstimate.distance / 1000).toFixed(1)} กม.
+                            </span>
+                            {fareEstimate.estimatedDuration > 0 && (
+                              <>
+                                {' · ประมาณ '}
+                                <span className="font-semibold text-slate-600 dark:text-slate-300">
+                                  {fareEstimate.estimatedDuration} นาที
+                                </span>
+                              </>
+                            )}
+                          </span>
                         ) : (
                           <span>ราคาแนะนำ <span className="text-green-600 dark:text-green-400 font-bold">฿{fareEstimate.fareMin} – ฿{fareEstimate.fareMax}</span></span>
                         )}
@@ -587,9 +602,14 @@ export default function RideRequestPage() {
                   </>
                 ) : (
                   <>
-                    <span className="text-xs text-slate-400 block">ระยะทาง</span>
+                    <span className="text-xs text-slate-400 block">ระยะทาง / เวลา</span>
                     <span className="text-sm font-bold text-slate-800 dark:text-white">
                       {fareEstimate.distance > 0 ? (fareEstimate.distance / 1000).toFixed(1) : '–'} กม.
+                      {fareEstimate.estimatedDuration > 0 && (
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                          {' '}~{fareEstimate.estimatedDuration} นาที
+                        </span>
+                      )}
                     </span>
                   </>
                 )}
