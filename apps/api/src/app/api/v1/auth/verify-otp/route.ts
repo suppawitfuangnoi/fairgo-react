@@ -13,10 +13,16 @@ export async function POST(request: NextRequest) {
 
     const { phone, code, role, name } = result.data;
 
-    // Verify OTP
-    const isValid = await verifyOTP(phone, code);
-    if (!isValid) {
-      return errorResponse("Invalid or expired OTP", 401);
+    // Verify OTP with attempt tracking
+    const verifyResult = await verifyOTP(phone, code);
+    if (!verifyResult.valid) {
+      return errorResponse(
+        verifyResult.reason || "Invalid or expired OTP",
+        401,
+        verifyResult.attemptsRemaining !== undefined
+          ? { attemptsRemaining: verifyResult.attemptsRemaining }
+          : undefined
+      );
     }
 
     // Find or create user
@@ -35,7 +41,6 @@ export async function POST(request: NextRequest) {
         },
       });
     } else if (name && !user.name) {
-      // Save name for existing users who didn't have one yet
       user = await prisma.user.update({
         where: { id: user.id },
         data: { name },
@@ -46,7 +51,6 @@ export async function POST(request: NextRequest) {
     const accessToken = generateAccessToken(user.id, user.role);
     const refreshToken = generateRefreshToken(user.id, user.role);
 
-    // Store refresh token
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     await prisma.refreshToken.create({
       data: {
@@ -54,15 +58,15 @@ export async function POST(request: NextRequest) {
         token: refreshToken,
         expiresAt,
         userAgent: request.headers.get("user-agent") || undefined,
+        ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0].trim() || undefined,
       },
     });
 
-    // Include verificationStatus for driver accounts
     let verificationStatus: string | undefined;
-    if (role === "DRIVER") {
+    if (role === "DRIVER" || user.role === "DRIVER") {
       const driverProfile = await prisma.driverProfile.findUnique({
         where: { userId: user.id },
-        select: { verificationStatus: true },
+        select: { verificationStatus: true, isVerified: true, isOnline: true, vehicleType: true },
       });
       verificationStatus = driverProfile?.verificationStatus;
     }
@@ -75,11 +79,12 @@ export async function POST(request: NextRequest) {
         email: user.email,
         role: user.role,
         status: user.status,
+        avatarUrl: user.avatarUrl,
         ...(verificationStatus !== undefined ? { verificationStatus } : {}),
       },
       accessToken,
       refreshToken,
-      expiresIn: 86400, // 24 hours in seconds
+      expiresIn: 86400,
       isNewUser,
     }, "Login successful");
   } catch (error) {

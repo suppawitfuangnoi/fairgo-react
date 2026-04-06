@@ -12,6 +12,7 @@ import PricingPage from '@/pages/PricingPage';
 import DisputesPage from '@/pages/DisputesPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import PromosPage from '@/pages/PromosPage';
+import OtpLogsPage from '@/pages/OtpLogsPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -94,6 +95,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <PromosPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/otp-logs"
+          element={
+            <ProtectedRoute>
+              <OtpLogsPage />
             </ProtectedRoute>
           }
         />

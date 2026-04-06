@@ -61,10 +61,13 @@ export const createRideOfferSchema = z.object({
   fareAmount: z.number().positive("Fare amount must be positive"),
   estimatedPickupMinutes: z.number().int().positive().optional(),
   message: z.string().max(200).optional(),
+  parentOfferId: z.string().optional(), // For driver counter-offer
 });
 
 export const respondToOfferSchema = z.object({
-  action: z.enum(["ACCEPT", "REJECT"]),
+  action: z.enum(["ACCEPT", "REJECT", "COUNTER"]),
+  counterFareAmount: z.number().positive().optional(), // Required when action=COUNTER
+  message: z.string().max(200).optional(),
 });
 
 // ==================== Trip Schemas ====================

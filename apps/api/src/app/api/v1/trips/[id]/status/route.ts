@@ -6,7 +6,7 @@ import { validateBody } from "@/middleware/validate";
 import { updateTripStatusSchema } from "@/lib/validation";
 import { TripStatus } from "@prisma/client";
 import { JwtPayload } from "@/lib/jwt";
-import { emitToRoom } from "@/lib/socket";
+import { emitToRoom, emitToUser } from "@/lib/socket";
 
 const VALID_TRANSITIONS: Record<TripStatus, TripStatus[]> = {
   DRIVER_ASSIGNED: ["DRIVER_EN_ROUTE", "CANCELLED"],
@@ -17,6 +17,16 @@ const VALID_TRANSITIONS: Record<TripStatus, TripStatus[]> = {
   COMPLETED: [],
   CANCELLED: [],
 };
+
+// Which roles can trigger which transitions
+const DRIVER_TRANSITIONS: TripStatus[] = [
+  "DRIVER_EN_ROUTE",
+  "DRIVER_ARRIVED",
+  "PICKUP_CONFIRMED",
+  "IN_PROGRESS",
+  "COMPLETED",
+];
+const CUSTOMER_TRANSITIONS: TripStatus[] = ["CANCELLED"];
 
 export async function PATCH(
   request: NextRequest,
@@ -33,13 +43,34 @@ export async function PATCH(
 
     const trip = await prisma.trip.findUnique({
       where: { id },
-      include: { driverProfile: true },
+      include: {
+        driverProfile: { include: { user: true } },
+        rideRequest: { include: { customerProfile: true } },
+      },
     });
 
     if (!trip) return errorResponse("Trip not found", 404);
 
-    // Validate state transition
     const newStatus = result.data.status as TripStatus;
+
+    // Authorization: verify caller is the assigned driver or the customer
+    const isDriver = trip.driverProfile.userId === user.userId;
+    const isCustomer = trip.rideRequest.customerProfile.userId === user.userId;
+    const isAdmin = user.role === "ADMIN";
+
+    if (!isDriver && !isCustomer && !isAdmin) {
+      return errorResponse("Not authorized to update this trip", 403);
+    }
+
+    // Role-based transition restrictions
+    if (isDriver && !isAdmin && !DRIVER_TRANSITIONS.includes(newStatus)) {
+      return errorResponse("Drivers can only advance the trip forward or cancel", 403);
+    }
+    if (isCustomer && !isAdmin && !CUSTOMER_TRANSITIONS.includes(newStatus)) {
+      return errorResponse("Customers can only cancel a trip", 403);
+    }
+
+    // Validate state machine
     const validNextStatuses = VALID_TRANSITIONS[trip.status];
     if (!validNextStatuses.includes(newStatus)) {
       return errorResponse(
@@ -63,7 +94,7 @@ export async function PATCH(
           amount: trip.lockedFare,
           commission,
           driverEarning: trip.lockedFare - commission,
-          method: "CASH", // Default for MVP
+          method: "CASH",
           status: "COMPLETED",
           paidAt: new Date(),
         },
@@ -74,20 +105,14 @@ export async function PATCH(
         where: { id: trip.driverProfileId },
         data: { totalTrips: { increment: 1 } },
       });
-
-      const rideRequest = await prisma.rideRequest.findUnique({
-        where: { id: trip.rideRequestId },
+      await prisma.customerProfile.update({
+        where: { id: trip.rideRequest.customerProfileId },
+        data: { totalTrips: { increment: 1 } },
       });
-      if (rideRequest) {
-        await prisma.customerProfile.update({
-          where: { id: rideRequest.customerProfileId },
-          data: { totalTrips: { increment: 1 } },
-        });
-      }
     } else if (newStatus === "CANCELLED") {
       updateData.cancelledAt = new Date();
       updateData.cancelledBy = user.userId;
-      updateData.cancelReason = result.data.cancelReason || "Cancelled";
+      updateData.cancelReason = result.data.cancelReason || "Cancelled by user";
     }
 
     const updated = await prisma.trip.update({
@@ -95,17 +120,32 @@ export async function PATCH(
       data: updateData,
       include: {
         driverProfile: {
-          include: {
-            user: { select: { name: true, avatarUrl: true } },
-          },
+          include: { user: { select: { name: true, avatarUrl: true } } },
         },
         payment: true,
       },
     });
 
-    // Notify both customer and driver via trip room
+    // Broadcast to trip room (both driver and customer listen here)
     emitToRoom(`trip:${id}`, "trip:status_update", updated);
     emitToRoom("admin:monitor", "trip:status_update", updated);
+
+    // If cancelled, also notify the other party individually
+    if (newStatus === "CANCELLED") {
+      if (isDriver) {
+        emitToUser(trip.rideRequest.customerProfile.userId, "trip:cancelled", {
+          tripId: id,
+          cancelledBy: "driver",
+          reason: result.data.cancelReason,
+        });
+      } else if (isCustomer) {
+        emitToUser(trip.driverProfile.user.id, "trip:cancelled", {
+          tripId: id,
+          cancelledBy: "customer",
+          reason: result.data.cancelReason,
+        });
+      }
+    }
 
     return successResponse(updated, `Trip status updated to ${newStatus}`);
   } catch (error) {

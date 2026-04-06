@@ -5,12 +5,7 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   message?: string;
-  meta?: {
-    page?: number;
-    limit?: number;
-    total?: number;
-    totalPages?: number;
-  };
+  meta?: Record<string, unknown>;
 }
 
 export function successResponse<T>(data: T, message?: string, status = 200) {
@@ -20,9 +15,9 @@ export function successResponse<T>(data: T, message?: string, status = 200) {
   );
 }
 
-export function errorResponse(error: string, status = 400) {
+export function errorResponse(error: string, status = 400, meta?: Record<string, unknown>) {
   return NextResponse.json(
-    { success: false, error } satisfies ApiResponse,
+    { success: false, error, ...(meta ? { meta } : {}) } satisfies ApiResponse,
     { status }
   );
 }

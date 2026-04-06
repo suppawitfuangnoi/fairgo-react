@@ -55,6 +55,7 @@ enum DocumentStatus {
 enum RideRequestStatus {
   PENDING
   MATCHING
+  NEGOTIATING
   MATCHED
   CANCELLED
   EXPIRED
@@ -62,6 +63,7 @@ enum RideRequestStatus {
 
 enum RideOfferStatus {
   PENDING
+  COUNTERED
   ACCEPTED
   REJECTED
   EXPIRED
@@ -299,10 +301,14 @@ model RideOffer {
   id              String          @id @default(cuid())
   rideRequestId   String
   driverProfileId String
-  fareAmount      Float           // Driver's offered fare
+  fareAmount      Float           // Offered fare
   estimatedPickupMinutes Int?     // ETA to pickup
-  message         String?         // Optional message from driver
+  message         String?         // Optional message
   status          RideOfferStatus @default(PENDING)
+  proposedBy      String          @default("DRIVER") // "DRIVER" or "CUSTOMER"
+  roundNumber     Int             @default(1)          // Negotiation round (max 5)
+  parentOfferId   String?         // Links to the offer being countered
+  expiresAt       DateTime?       // Auto-expire after 60s for counter-offers
   respondedAt     DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -310,10 +316,10 @@ model RideOffer {
   rideRequest   RideRequest   @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
   driverProfile DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
 
-  @@unique([rideRequestId, driverProfileId])
   @@index([rideRequestId])
   @@index([driverProfileId])
   @@index([status])
+  @@index([expiresAt])
   @@map("ride_offers")
 }
 
@@ -591,12 +597,15 @@ model AuditLog {
 }
 
 model OtpCode {
-  id        String   @id @default(cuid())
-  phone     String
-  code      String
-  otpRef    String   // Human-readable reference e.g. "REF-A3F7K2" shown to user for lookup
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id           String    @id @default(cuid())
+  phone        String
+  code         String
+  otpRef       String    // Human-readable reference e.g. "REF-A3F7K2" shown to user for lookup
+  expiresAt    DateTime
+  attemptCount Int       @default(0)  // Wrong attempts made
+  usedAt       DateTime?              // When code was successfully used
+  ipAddress    String?                // Requester IP for rate-limit auditing
+  createdAt    DateTime  @default(now())
 
   @@index([phone])
   @@index([expiresAt])

@@ -7,6 +7,9 @@ import { createRideOfferSchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToUser } from "@/lib/socket";
 
+const MAX_NEGOTIATION_ROUNDS = 5;
+const COUNTER_OFFER_EXPIRY_MS = 90 * 1000; // 90 seconds to respond to counter-offers
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = requireRole(request, ["DRIVER"]);
@@ -25,26 +28,61 @@ export async function POST(request: NextRequest) {
       return errorResponse("Driver must be verified to submit offers", 403);
     }
 
-    // Check ride request exists and is PENDING
+    // Check ride request exists and is PENDING or NEGOTIATING
     const rideRequest = await prisma.rideRequest.findUnique({
       where: { id: result.data.rideRequestId },
+      include: { customerProfile: true },
     });
     if (!rideRequest) return errorResponse("Ride request not found", 404);
-    if (rideRequest.status !== "PENDING") {
+    if (!["PENDING", "NEGOTIATING"].includes(rideRequest.status)) {
       return errorResponse("Ride request is no longer available", 422);
     }
 
-    // Check if driver already submitted an offer
-    const existingOffer = await prisma.rideOffer.findUnique({
+    // Check if driver has a pending offer (can't submit twice while PENDING)
+    const existingPendingOffer = await prisma.rideOffer.findFirst({
       where: {
-        rideRequestId_driverProfileId: {
-          rideRequestId: result.data.rideRequestId,
-          driverProfileId: driverProfile.id,
-        },
+        rideRequestId: result.data.rideRequestId,
+        driverProfileId: driverProfile.id,
+        status: "PENDING",
       },
     });
-    if (existingOffer) {
-      return errorResponse("You already submitted an offer for this ride", 409);
+    if (existingPendingOffer) {
+      return errorResponse("You already have a pending offer for this ride", 409);
+    }
+
+    // If countering, find the customer's counter-offer
+    let roundNumber = 1;
+    let parentOfferId: string | undefined;
+    let expiresAt: Date | undefined;
+
+    if (result.data.parentOfferId) {
+      // Driver is countering a customer's counter-offer
+      const parentOffer = await prisma.rideOffer.findUnique({
+        where: { id: result.data.parentOfferId },
+      });
+      if (!parentOffer || parentOffer.rideRequestId !== result.data.rideRequestId) {
+        return errorResponse("Invalid parent offer", 422);
+      }
+      if (parentOffer.proposedBy !== "CUSTOMER") {
+        return errorResponse("Can only counter a customer counter-offer", 422);
+      }
+      if (parentOffer.status !== "PENDING") {
+        return errorResponse("This counter-offer has already been responded to", 422);
+      }
+
+      roundNumber = parentOffer.roundNumber + 1;
+      parentOfferId = parentOffer.id;
+      expiresAt = new Date(Date.now() + COUNTER_OFFER_EXPIRY_MS);
+
+      if (roundNumber > MAX_NEGOTIATION_ROUNDS) {
+        return errorResponse(`Maximum negotiation rounds (${MAX_NEGOTIATION_ROUNDS}) reached`, 422);
+      }
+
+      // Mark parent offer as COUNTERED
+      await prisma.rideOffer.update({
+        where: { id: parentOffer.id },
+        data: { status: "COUNTERED", respondedAt: new Date() },
+      });
     }
 
     const offer = await prisma.rideOffer.create({
@@ -54,6 +92,10 @@ export async function POST(request: NextRequest) {
         fareAmount: result.data.fareAmount,
         estimatedPickupMinutes: result.data.estimatedPickupMinutes,
         message: result.data.message,
+        proposedBy: "DRIVER",
+        roundNumber,
+        parentOfferId,
+        expiresAt,
       },
       include: {
         driverProfile: {
@@ -65,15 +107,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Update ride request status to MATCHING
-    const updatedRide = await prisma.rideRequest.update({
+    // Update ride request status
+    const newStatus = roundNumber > 1 ? "NEGOTIATING" : "MATCHING";
+    await prisma.rideRequest.update({
       where: { id: result.data.rideRequestId },
-      include: { customerProfile: true },
-      data: { status: "MATCHING" },
+      data: { status: newStatus },
     });
 
-    // Notify customer in real-time
-    emitToUser(updatedRide.customerProfile.userId, "offer:new", offer);
+    // Notify customer
+    emitToUser(rideRequest.customerProfile.userId, "offer:new", {
+      ...offer,
+      roundNumber,
+      isCounter: roundNumber > 1,
+    });
 
     return successResponse(offer, "Offer submitted successfully", 201);
   } catch (error) {
