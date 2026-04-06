@@ -178,8 +178,7 @@ export async function POST(
 
     return successResponse(trip, "Offer accepted. Trip created with fare locked!");
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
     console.error("[OFFERS] Respond error:", error);
-    return errorResponse(`Failed to respond to offer: ${msg}`, 500);
+    return errorResponse("Failed to respond to offer", 500);
   }
 }
