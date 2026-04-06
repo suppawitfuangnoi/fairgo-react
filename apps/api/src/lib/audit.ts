@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export interface AuditLogParams {
   userId?: string;       // Who performed the action
@@ -23,8 +24,8 @@ export async function writeAuditLog(params: AuditLogParams): Promise<void> {
         action: params.action,
         entity: params.entity,
         entityId: params.entityId,
-        oldData: params.oldData,
-        newData: params.newData,
+        oldData: params.oldData as Prisma.InputJsonValue | undefined,
+        newData: params.newData as Prisma.InputJsonValue | undefined,
         ipAddress: params.ipAddress,
         userAgent: params.userAgent,
       },

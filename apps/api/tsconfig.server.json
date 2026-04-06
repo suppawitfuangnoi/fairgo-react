@@ -15,5 +15,5 @@
     "baseUrl": "."
   },
   "include": ["server.ts", "src/lib/**/*.ts"],
-  "exclude": ["node_modules", ".next"]
+  "exclude": ["node_modules", ".next", "src/lib/__tests__"]
 }

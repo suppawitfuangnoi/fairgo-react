@@ -14,6 +14,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { emitToUser } from "@/lib/socket";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ export async function createAndEmitNotification(
         body: input.body,
         relatedEntityType: input.relatedEntityType ?? null,
         relatedEntityId: input.relatedEntityId ?? null,
-        payload: input.payload ?? null,
+        payload: (input.payload ?? null) as Prisma.InputJsonValue | null,
       },
     });
 
