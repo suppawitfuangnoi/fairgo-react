@@ -16,19 +16,46 @@
  * Leave unset (or set to empty string) to disable this endpoint in production.
  */
 import { NextRequest } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { generateAccessToken, generateRefreshToken } from "@/lib/jwt";
 import { successResponse, errorResponse } from "@/lib/api-response";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { writeAuditLog, getClientIp } from "@/lib/audit";
+
+/**
+ * Timing-safe string comparison to prevent timing attacks on the bootstrap secret.
+ * A naive `===` comparison short-circuits on the first differing character, leaking
+ * information about how many leading characters are correct.
+ */
+function timingSafeStringEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+}
 
 export async function POST(request: NextRequest) {
-  // Must be explicitly enabled via env var
+  // ── Must be explicitly enabled via env var ────────────────────────────────
   const secret = process.env.BOOTSTRAP_SECRET;
-  if (!secret || secret.length < 8) {
+  if (!secret || secret.length < 16) {
     return errorResponse("Bootstrap endpoint is disabled", 403);
   }
 
-  const providedSecret = request.headers.get("x-bootstrap-secret");
-  if (providedSecret !== secret) {
+  // ── IP rate limit: 5 attempts per 15 min ──────────────────────────────────
+  const ip      = getClientIp(request) ?? "unknown";
+  const ipLimit = checkRateLimit(`ip:${ip}:bootstrap`, 15 * 60_000, 5);
+  if (!ipLimit.allowed) {
+    return errorResponse("Too many bootstrap attempts. Try again later.", 429);
+  }
+
+  // ── Timing-safe secret comparison ─────────────────────────────────────────
+  const providedSecret = request.headers.get("x-bootstrap-secret") ?? "";
+  if (!timingSafeStringEqual(providedSecret, secret)) {
+    writeAuditLog({
+      action:   "BOOTSTRAP_SECRET_MISMATCH",
+      entity:   "Bootstrap",
+      newData:  { ip },
+      ipAddress: ip,
+    }).catch(() => {});
     return errorResponse("Invalid bootstrap secret", 403);
   }
 

@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/middleware/auth";
+import { requireActiveRole } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { validateBody } from "@/middleware/validate";
-import { createRideRequestSchema } from "@/lib/validation";
+import { validateBody, validateQuery } from "@/middleware/validate";
+import { createRideRequestSchema, ridesQuerySchema } from "@/lib/validation";
 import { JwtPayload } from "@/lib/jwt";
 import { emitToRoom } from "@/lib/socket";
 import { calculateDistance, estimateDuration } from "@/lib/pricing";
@@ -11,7 +12,7 @@ import { Notif } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = requireRole(request, ["CUSTOMER"]);
+    const authResult = await requireActiveRole(request, ["CUSTOMER"]);
     if (!("userId" in authResult)) return authResult as unknown as Response;
     const user = authResult as JwtPayload;
 
@@ -101,10 +102,10 @@ export async function GET(request: NextRequest) {
     if (!("userId" in authResult)) return authResult as unknown as Response;
     const user = authResult as JwtPayload;
 
-    const page = parseInt(request.nextUrl.searchParams.get("page") || "1");
-    const limit = parseInt(request.nextUrl.searchParams.get("limit") || "20");
-    const status = request.nextUrl.searchParams.get("status");
-    const vehicleType = request.nextUrl.searchParams.get("vehicleType");
+    // Validate query params — prevents SQL injection via Prisma, enforces max limit
+    const queryResult = validateQuery(request, ridesQuerySchema);
+    if ("error" in queryResult) return queryResult.error;
+    const { page, limit, status, vehicleType } = queryResult.data;
 
     const where: Record<string, unknown> = {};
 
@@ -146,15 +147,15 @@ export async function GET(request: NextRequest) {
           _count: { select: { offers: true } },
         },
         orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: ((page ?? 1) - 1) * (limit ?? 20),
+        take: limit ?? 20,
       }),
       prisma.rideRequest.count({ where }),
     ]);
 
     return successResponse({
       rides,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      meta: { page: page ?? 1, limit: limit ?? 20, total, totalPages: Math.ceil(total / (limit ?? 20)) },
     });
   } catch (error) {
     console.error("[RIDES] List error:", error);

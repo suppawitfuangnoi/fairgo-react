@@ -153,6 +153,41 @@ export const registerVehicleSchema = z.object({
 // ==================== Pagination ====================
 
 export const paginationSchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
+  page:  z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+// ==================== Typed query schemas (validated via validateQuery) ====================
+
+export const ridesQuerySchema = paginationSchema.extend({
+  status: z
+    .enum(["PENDING", "MATCHING", "NEGOTIATING", "MATCHED", "CANCELLED", "EXPIRED"])
+    .optional(),
+  vehicleType: z.enum(["TAXI", "MOTORCYCLE", "TUKTUK"]).optional(),
+});
+
+export const tripsQuerySchema = paginationSchema.extend({
+  status: z
+    .enum([
+      "DRIVER_ASSIGNED",
+      "DRIVER_EN_ROUTE",
+      "DRIVER_ARRIVED",
+      "PICKUP_CONFIRMED",
+      "IN_PROGRESS",
+      "ARRIVED_DESTINATION",
+      "AWAITING_CASH_CONFIRMATION",
+      "COMPLETED",
+      "CANCELLED",
+      "CANCELLED_BY_PASSENGER",
+      "CANCELLED_BY_DRIVER",
+      "NO_SHOW_PASSENGER",
+      "NO_SHOW_DRIVER",
+    ])
+    .optional(),
+});
+
+export const adminUsersQuerySchema = paginationSchema.extend({
+  role:   z.enum(["CUSTOMER", "DRIVER", "ADMIN"]).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]).optional(),
+  search: z.string().max(200).optional(),
 });

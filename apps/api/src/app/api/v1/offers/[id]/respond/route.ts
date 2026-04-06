@@ -13,7 +13,7 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/middleware/auth";
+import { requireActiveRole } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { validateBody } from "@/middleware/validate";
 import { respondToOfferSchema } from "@/lib/validation";
@@ -40,7 +40,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = requireRole(request, ["CUSTOMER"]);
+    const authResult = await requireActiveRole(request, ["CUSTOMER"]);
     if (!("userId" in authResult)) return authResult as unknown as Response;
     const user = authResult as JwtPayload;
 

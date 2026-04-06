@@ -3,6 +3,8 @@ import { checkOtpRateLimit, generateOTP, normalisePhone, OtpPurpose } from "@/li
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { validateBody } from "@/middleware/validate";
 import { requestOtpSchema } from "@/lib/validation";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { writeAuditLog, getClientIp } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,15 +21,38 @@ export async function POST(request: NextRequest) {
       role === "DRIVER" ? "DRIVER_LOGIN" : "CUSTOMER_LOGIN";
 
     // Extract request metadata
-    const ipAddress =
-      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-      request.headers.get("x-real-ip") ||
-      undefined;
+    const ipAddress = getClientIp(request);
     const userAgent = request.headers.get("user-agent") || undefined;
 
-    // Rate limit check (includes cooldown + 10-min window)
+    // ── IP-level rate limit: 10 OTP requests per 10 min per IP ───────────
+    // This prevents phone-number enumeration and SMS bombing from a single IP.
+    const ipKey = `ip:${ipAddress ?? "unknown"}:otp-request`;
+    const ipLimit = checkRateLimit(ipKey, 10 * 60_000, 10);
+    if (!ipLimit.allowed) {
+      writeAuditLog({
+        action: "OTP_IP_RATE_LIMIT_EXCEEDED",
+        entity: "OTP",
+        newData: { ip: ipAddress, phone },
+        ipAddress,
+        userAgent,
+      }).catch(() => {});
+      return errorResponse(
+        "Too many OTP requests from this IP. Please try again later.",
+        429,
+        { retryAfterSeconds: Math.ceil(ipLimit.retryAfterMs / 1000) }
+      );
+    }
+
+    // ── Per-phone rate limit (includes cooldown + 10-min window) ─────────
     const rateCheck = await checkOtpRateLimit(phone, purpose);
     if (!rateCheck.allowed) {
+      writeAuditLog({
+        action: "OTP_PHONE_RATE_LIMIT_EXCEEDED",
+        entity: "OTP",
+        newData: { phone },
+        ipAddress,
+        userAgent,
+      }).catch(() => {});
       return errorResponse(
         rateCheck.reason || "Rate limit exceeded",
         429,

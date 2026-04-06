@@ -11,7 +11,7 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/middleware/auth";
+import { requireRole, requireActiveRole } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { validateBody } from "@/middleware/validate";
 import { createRideOfferSchema } from "@/lib/validation";
@@ -25,7 +25,7 @@ const COUNTER_OFFER_EXPIRY_MS = 90 * 1000; // 90 s
 
 export async function POST(request: NextRequest) {
   try {
-    const authResult = requireRole(request, ["DRIVER"]);
+    const authResult = await requireActiveRole(request, ["DRIVER"]);
     if (!("userId" in authResult)) return authResult as unknown as Response;
     const user = authResult as JwtPayload;
 

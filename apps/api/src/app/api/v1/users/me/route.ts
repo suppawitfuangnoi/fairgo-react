@@ -38,7 +38,9 @@ export async function GET(request: NextRequest) {
       locale: dbUser.locale,
       customerProfile: dbUser.customerProfile,
       driverProfile: dbUser.driverProfile,
-      adminProfile: dbUser.adminProfile,
+      // Only expose adminProfile metadata to admin role callers —
+      // leaking this to customer/driver apps is unnecessary and potentially risky.
+      ...(user.role === "ADMIN" ? { adminProfile: dbUser.adminProfile } : {}),
       createdAt: dbUser.createdAt,
     });
   } catch (error) {

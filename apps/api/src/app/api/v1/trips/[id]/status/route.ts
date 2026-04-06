@@ -16,7 +16,7 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/middleware/auth";
+import { requireActiveAuth } from "@/middleware/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { validateBody } from "@/middleware/validate";
 import { updateTripStatusSchema } from "@/lib/validation";
@@ -54,7 +54,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = requireAuth(request);
+    const authResult = await requireActiveAuth(request);
     if (!("userId" in authResult)) return authResult as unknown as Response;
     const user = authResult as JwtPayload;
 
