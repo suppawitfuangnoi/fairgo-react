@@ -154,7 +154,8 @@ export const registerVehicleSchema = z.object({
 
 export const paginationSchema = z.object({
   page:  z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  // Cap at 100 via transform (returns 100 for any value above 100, friendlier than rejecting)
+  limit: z.coerce.number().int().min(1).default(20).transform((v) => Math.min(v, 100)),
 });
 
 // ==================== Typed query schemas (validated via validateQuery) ====================

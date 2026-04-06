@@ -207,7 +207,8 @@ describe("requireActiveAuth", () => {
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBe(403);
     const body = await (result as Response).json();
-    expect(body.message).toMatch(/suspended/i);
+    // errorResponse uses { success, error } shape — not { message }
+    expect(body.error).toMatch(/suspended/i);
   });
 
   it("returns 401 when user not found in DB", async () => {
