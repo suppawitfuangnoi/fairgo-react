@@ -720,7 +720,7 @@ model OtpCode {
   userAgent    String?                          // Browser / app user-agent
   metadata     Json?                            // Optional: { deviceType, appVersion, … }
   createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  updatedAt    DateTime   @default(now()) @updatedAt
 
   @@index([phone])
   @@index([phone, purpose, status])
