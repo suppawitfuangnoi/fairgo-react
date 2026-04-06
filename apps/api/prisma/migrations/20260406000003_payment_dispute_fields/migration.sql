@@ -21,13 +21,16 @@ ALTER TABLE "support_tickets"
 CREATE INDEX IF NOT EXISTS "support_tickets_tripId_idx" ON "support_tickets" ("tripId");
 
 -- ── NotificationType enum: add DISPUTE_RESOLVED ───────────────────────────────
--- PostgreSQL ALTER TYPE ADD VALUE is idempotent-safe with IF NOT EXISTS (PG 14+).
--- Fall back to a DO block for older PG versions.
+-- Uses pg_type OID lookup instead of ::regtype cast to avoid case-sensitivity
+-- issues with mixed-case Prisma-generated enum names on PostgreSQL.
 DO $$
+DECLARE
+  v_typid oid;
 BEGIN
-  IF NOT EXISTS (
+  SELECT oid INTO v_typid FROM pg_type WHERE typname = 'NotificationType';
+  IF v_typid IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM pg_enum
-    WHERE enumtypid = 'NotificationType'::regtype
+    WHERE enumtypid = v_typid
       AND enumlabel = 'DISPUTE_RESOLVED'
   ) THEN
     ALTER TYPE "NotificationType" ADD VALUE 'DISPUTE_RESOLVED';
