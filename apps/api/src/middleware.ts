@@ -21,7 +21,11 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 // ── Origin allowlist ───────────────────────────────────────────────────────
-const PROD_ORIGINS: string[] = [];
+const PROD_ORIGINS: string[] = [
+  "https://fairgo-react-admin.vercel.app",
+  "https://fairgo-react-customer.vercel.app",
+  "https://fairgo-react-driver.vercel.app",
+];
 
 function isLocalhostOrigin(origin: string): boolean {
   return (
