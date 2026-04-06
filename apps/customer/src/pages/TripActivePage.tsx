@@ -321,6 +321,22 @@ export default function TripActivePage() {
         </div>
       </div>
 
+      {/* ── SOS BUTTON ── */}
+      <div className="fixed left-5 z-[9998] pointer-events-auto" style={{ bottom: 'calc(var(--bottom-sheet-height, 260px) + 16px)' }}>
+        <button
+          onClick={() => {
+            if (window.confirm('ต้องการโทรสายด่วนฉุกเฉิน 191 หรือไม่?')) {
+              window.location.href = 'tel:191';
+            }
+          }}
+          className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-lg shadow-red-500/40 active:scale-95 transition-transform border-2 border-white"
+          aria-label="SOS Emergency"
+        >
+          <span className="material-icons-round text-white text-xl">shield</span>
+        </button>
+        <p className="text-[9px] font-bold text-red-500 text-center mt-1 bg-white/80 rounded px-1">SOS</p>
+      </div>
+
       {/* ── BOTTOM SHEET ── */}
       <div className="fixed bottom-0 left-0 w-full z-[9999]">
         <div className="bg-white rounded-t-3xl shadow-2xl p-6 pb-8 border-t border-slate-100">

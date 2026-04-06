@@ -180,7 +180,7 @@ export default function HomePage() {
   return (
     <>
       <style>{styles}</style>
-    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex flex-col pb-24 relative">
+    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display flex flex-col pb-32 relative">
       {isOnline && (
         <GoogleMap
           center={position}

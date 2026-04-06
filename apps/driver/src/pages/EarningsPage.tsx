@@ -136,7 +136,7 @@ export default function EarningsPage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto hide-scrollbar pb-24 px-5 pt-2">
+      <main className="flex-1 overflow-y-auto hide-scrollbar pb-32 px-5 pt-2">
         {/* Header */}
         <header className="mb-8">
           <div className="flex justify-between items-center mb-6">
@@ -161,25 +161,31 @@ export default function EarningsPage() {
             </button>
           </div>
 
-          {/* Balance Card */}
-          <div className="bg-white dark:bg-surface-dark rounded-2xl p-6 shadow-soft relative overflow-hidden">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl"></div>
-            <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl"></div>
+          {/* Balance Card — matches driver_earnings_summary design: white rounded-2xl with decorative blur circles */}
+          <div className="bg-white dark:bg-surface-dark rounded-2xl p-6 shadow-card-md relative overflow-hidden">
+            {/* Decorative blur circles */}
+            <div className="absolute -right-8 -top-8 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -left-8 -bottom-8 w-40 h-40 bg-primary/15 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute right-10 top-10 w-20 h-20 bg-primary/5 rounded-full blur-xl pointer-events-none"></div>
             <div className="relative z-10 text-center">
-              <p className="text-sm font-medium text-slate-400 dark:text-slate-400 mb-1">Total Balance</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+                ยอดเงินรวม
+              </p>
               {loading ? (
-                <div className="h-10 w-32 bg-slate-100 dark:bg-slate-700 animate-pulse rounded-lg mx-auto mb-6"></div>
+                <div className="h-12 w-40 bg-slate-100 dark:bg-slate-700 animate-pulse rounded-lg mx-auto mb-6"></div>
               ) : (
-                <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6">
-                  ฿{(wallet?.balance ?? 0).toFixed(2)}
+                <h1 className="text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1">
+                  ฿{(wallet?.balance ?? 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </h1>
               )}
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-6">พร้อมถอน · อัพเดทวันนี้</p>
               <button
                 onClick={() => setShowWithdrawModal(true)}
-                className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3.5 px-6 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
               >
-                <span>Withdraw Funds</span>
-                <span className="material-icons-round text-white group-hover:translate-x-1 transition-transform text-sm">arrow_forward</span>
+                <span className="material-symbols-outlined text-white text-base">account_balance</span>
+                <span>ถอนเงิน</span>
+                <span className="material-symbols-outlined text-white group-hover:translate-x-1 transition-transform text-base ml-1">arrow_forward</span>
               </button>
             </div>
           </div>

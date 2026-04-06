@@ -78,30 +78,28 @@ export default function HomePage() {
       <div className="relative z-10 flex flex-col justify-between h-full pointer-events-none">
         {/* Top Area: Header */}
         <div className="pt-14 px-5 pointer-events-auto">
-          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-full p-2 flex items-center gap-3 pr-4 ring-1 ring-black/5 border border-gray-100 dark:border-gray-700">
+          <div className="bg-white dark:bg-bg-dark shadow-float rounded-full p-2 flex items-center gap-3 pr-4 border border-slate-100 dark:border-slate-800">
             <button
               onClick={() => setDrawerOpen(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
-              <span className="material-icons-round text-gray-800 dark:text-white">
+              <span className="material-symbols-outlined text-slate-700 dark:text-white text-xl">
                 menu
               </span>
             </button>
-            <div className="flex-1">
-              <button
-                onClick={() => navigate('/ride-request')}
-                className="flex items-center gap-2 w-full text-left"
-              >
-                <div className="w-2 h-2 rounded-full bg-primary"></div>
-                <span className="text-gray-400 dark:text-gray-500 font-medium text-sm">
-                  ไปไหนดี?
-                </span>
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/ride-request')}
+              className="flex-1 flex items-center gap-2 text-left"
+            >
+              <span className="material-symbols-outlined text-primary text-base">search</span>
+              <span className="text-slate-400 dark:text-slate-500 font-medium text-sm">
+                ไปไหนดี?
+              </span>
+            </button>
             <NotificationBell />
             <button
               onClick={() => navigate('/profile')}
-              className="w-9 h-9 rounded-full overflow-hidden border-2 border-white dark:border-gray-600 shadow-sm"
+              className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm shrink-0"
             >
               <img src={IMG.userAvatar} className="w-full h-full object-cover rounded-full" alt="avatar" />
             </button>
@@ -109,112 +107,101 @@ export default function HomePage() {
         </div>
 
         {/* Bottom Sheet Area */}
-        <div className="pointer-events-auto w-full bg-white dark:bg-gray-900 rounded-t-3xl shadow-lg shadow-black/10 pb-8 pt-2 border-t border-gray-100 dark:border-gray-700">
+        <div className="pointer-events-auto w-full bg-white dark:bg-bg-dark rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.10)] pb-8 pt-2">
           {/* Drag Handle */}
           <div className="w-full flex justify-center pt-3 pb-1">
-            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+            <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
           </div>
 
           <div className="px-6 py-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-5">
               วางแผนการเดินทาง
             </h2>
 
             {/* Inputs Container */}
             <div className="relative flex flex-col gap-4 mb-6">
               {/* Connecting Line */}
-              <div className="absolute left-[22px] top-[40px] bottom-[40px] w-0.5 border-l-2 border-dashed border-gray-300 dark:border-gray-700 z-0"></div>
+              <div className="absolute left-[22px] top-[40px] bottom-[40px] w-0.5 border-l-2 border-dashed border-slate-200 dark:border-slate-700 z-0"></div>
 
               {/* Pickup Input */}
-              <div className="relative z-10 group">
-                <div className="bg-background-light dark:bg-background-dark rounded-xl p-4 flex items-center gap-4 border border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
-                  <div className="w-5 h-5 rounded-full border-[3px] border-gray-800 dark:border-white shrink-0 bg-transparent"></div>
+              <div className="relative z-10">
+                <div className="bg-background-light dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all">
+                  <div className="w-4 h-4 rounded-full border-[3px] border-slate-700 dark:border-white shrink-0 bg-transparent"></div>
                   <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
-                      Pick-up
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">
+                      ต้นทาง
                     </label>
                     <input
                       type="text"
                       value="ตำแหน่งปัจจุบัน"
                       readOnly
-                      className="w-full bg-transparent border-none p-0 text-sm font-semibold text-gray-800 dark:text-gray-200 focus:ring-0"
+                      className="w-full bg-transparent border-none p-0 text-sm font-semibold text-slate-800 dark:text-slate-200 focus:ring-0 cursor-default"
                     />
                   </div>
-                  <span className="material-icons-round text-gray-400 text-lg">
+                  <span className="material-symbols-outlined text-slate-400 text-lg">
                     my_location
                   </span>
                 </div>
               </div>
 
               {/* Destination Input */}
-              <div className="relative z-10 group">
-                <div className="bg-background-light dark:bg-background-dark rounded-xl p-4 flex items-center gap-4 border border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-all shadow-sm cursor-text">
-                  <div className="w-5 h-5 shrink-0 flex items-center justify-center">
-                    <span className="material-icons-round text-primary text-2xl">
-                      location_on
-                    </span>
-                  </div>
+              <div className="relative z-10">
+                <div
+                  onClick={() => navigate('/ride-request')}
+                  className="bg-background-light dark:bg-slate-800 rounded-xl p-4 flex items-center gap-3 border border-transparent hover:border-primary/30 dark:hover:border-primary/40 transition-all cursor-pointer active:bg-primary/5"
+                >
+                  <span className="material-symbols-outlined text-primary text-lg shrink-0">
+                    location_on
+                  </span>
                   <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">
-                      ไปไหนดี?
+                    <label className="block text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5 cursor-pointer">
+                      ปลายทาง
                     </label>
-                    <button
-                      onClick={() => navigate('/ride-request')}
-                      className="w-full text-left bg-transparent border-none p-0 text-base font-semibold text-gray-400 hover:text-gray-900 dark:hover:text-white focus:ring-0 transition-colors"
-                    >
+                    <p className="text-sm font-semibold text-slate-400 dark:text-slate-500">
                       เลือกปลายทาง
-                    </button>
+                    </p>
                   </div>
-                  <button className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500">
-                    <span className="material-icons-round text-sm">add</span>
-                  </button>
+                  <span className="material-symbols-outlined text-slate-400 text-lg">
+                    chevron_right
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Quick Action Buttons */}
+            {/* Horizontal Shortcuts Scroller */}
             <div className="mb-6">
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                ระเบียบการเลือกรถ
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">
+                ไปที่ไหน
               </p>
-              <div className="grid grid-cols-3 gap-2">
-                <button className="py-3 px-2 bg-background-light dark:bg-background-dark hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/30 text-center">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-1">
-                    <span className="material-icons-round text-sm">
-                      local_taxi
+              <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                {[
+                  { icon: 'home', label: 'บ้าน', color: 'text-primary' },
+                  { icon: 'work', label: 'ที่ทำงาน', color: 'text-slate-600' },
+                  { icon: 'local_taxi', label: 'แท็กซี่', color: 'text-amber-500' },
+                  { icon: 'two_wheeler', label: 'มอเตอร์', color: 'text-orange-500' },
+                  { icon: 'directions_car', label: 'ตุ๊กตุ๊ก', color: 'text-emerald-500' },
+                  { icon: 'local_offer', label: 'โปรโมชั่น', color: 'text-pink-500' },
+                ].map(({ icon, label, color }) => (
+                  <button
+                    key={label}
+                    onClick={() => navigate('/ride-request')}
+                    className="flex-shrink-0 flex flex-col items-center gap-2 py-3 px-4 bg-background-light dark:bg-slate-800/60 hover:bg-primary/5 rounded-xl transition-colors border border-transparent hover:border-primary/20 min-w-[68px]"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-white dark:bg-slate-700 shadow-sm flex items-center justify-center">
+                      <span className={`material-symbols-outlined text-lg ${color}`}>{icon}</span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                      {label}
                     </span>
-                  </div>
-                  <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    แท็กซี่
-                  </div>
-                </button>
-                <button className="py-3 px-2 bg-background-light dark:bg-background-dark hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/30 text-center">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-1">
-                    <span className="material-icons-round text-sm">
-                      two_wheeler
-                    </span>
-                  </div>
-                  <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    มอเตอร์
-                  </div>
-                </button>
-                <button className="py-3 px-2 bg-background-light dark:bg-background-dark hover:bg-primary/10 rounded-xl transition-colors border border-transparent hover:border-primary/30 text-center">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-1">
-                    <span className="material-icons-round text-sm">
-                      directions_car
-                    </span>
-                  </div>
-                  <div className="text-xs font-semibold text-gray-900 dark:text-white">
-                    ตุ๊กตุ๊ก
-                  </div>
-                </button>
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Recent Trips */}
             {!loading && recentTrips.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">
                   การเดินทางล่าสุด
                 </h3>
                 <div className="space-y-2">
@@ -222,14 +209,20 @@ export default function HomePage() {
                     <button
                       key={trip.id}
                       onClick={() => navigate('/ride-request')}
-                      className="w-full p-3 bg-background-light dark:bg-background-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+                      className="w-full p-3 bg-background-light dark:bg-slate-800/60 rounded-xl hover:bg-primary/5 dark:hover:bg-slate-800 transition-colors text-left flex items-center gap-3 active:scale-[0.98]"
                     >
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {trip.route}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {trip.fare > 0 ? `฿${trip.fare.toFixed(0)}` : ''}{trip.driverName ? ` • ${trip.driverName}` : ''}
-                      </p>
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-primary text-sm">history</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                          {trip.route}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {trip.fare > 0 ? `฿${trip.fare.toFixed(0)}` : ''}{trip.driverName ? ` • ${trip.driverName}` : ''}
+                        </p>
+                      </div>
+                      <span className="material-symbols-outlined text-slate-400 text-base">chevron_right</span>
                     </button>
                   ))}
                 </div>

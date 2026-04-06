@@ -65,10 +65,8 @@ export default function NotificationBell() {
   const fetchNotifications = useCallback(async (pageNum = 1, append = false) => {
     try {
       setLoading(true);
-      const res = await apiFetch(`/notifications?page=${pageNum}&limit=20`);
-      if (!res.ok) return;
-      const json = await res.json();
-      const data = json.data;
+      const json = await apiFetch<any>(`/notifications?page=${pageNum}&limit=20`);
+      const data = json?.data ?? json;
       const newNotifs: Notification[] = data?.notifications ?? [];
       setUnread(data?.unreadCount ?? 0);
       setHasMore(pageNum < (data?.meta?.totalPages ?? 1));
@@ -105,11 +103,8 @@ export default function NotificationBell() {
   useEffect(() => {
     const id = setInterval(async () => {
       try {
-        const res = await apiFetch('/notifications/unread-count');
-        if (res.ok) {
-          const json = await res.json();
-          setUnread(json.data?.count ?? 0);
-        }
+        const json = await apiFetch<any>('/notifications/unread-count');
+        setUnread(json?.data?.count ?? json?.count ?? 0);
       } catch { /* silent */ }
     }, 30_000);
     return () => clearInterval(id);

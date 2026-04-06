@@ -56,13 +56,12 @@ export default function NotificationsPage() {
       setLoading(true);
       const params = new URLSearchParams({ page: String(p), limit: '20' });
       if (unreadOnly) params.set('unread', 'true');
-      const res = await apiFetch(`/notifications?${params}`);
-      if (!res.ok) return;
-      const json = await res.json();
-      const data = json.data;
+      const json = await apiFetch<any>(`/notifications?${params}`);
+      const data = json?.data ?? json;
       setUnread(data?.unreadCount ?? 0);
       setHasMore(p < (data?.meta?.totalPages ?? 1));
-      setNotifs((prev) => append ? [...prev, ...data.notifications] : data.notifications);
+      const notifications = data?.notifications ?? [];
+      setNotifs((prev) => append ? [...prev, ...notifications] : notifications);
     } catch { /* silent */ }
     finally { setLoading(false); }
   }, []);

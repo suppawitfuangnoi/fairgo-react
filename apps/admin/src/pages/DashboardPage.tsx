@@ -160,49 +160,58 @@ export default function DashboardPage() {
         </h2>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — matches admin_dashboard_overview: icon bg-primary/10 rounded-lg, % change badge, bold value */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           {
             label: 'Active Trips',
-            value: stats?.totalTripsToday || 0,
+            value: stats?.stats?.activeTrips ?? stats?.totalTripsToday ?? 0,
             icon: 'route',
             trend: '+12.5%',
+            iconColor: 'text-primary',
           },
           {
             label: 'Total Revenue',
             value: `฿${(stats?.revenueToday || 0).toLocaleString('th-TH', { minimumFractionDigits: 0 })}`,
             icon: 'payments',
             trend: '+8.2%',
+            iconColor: 'text-emerald-600',
           },
           {
-            label: 'New Users',
-            value: stats?.totalUsers || 0,
+            label: 'Total Users',
+            value: (stats?.totalUsers || 0).toLocaleString(),
             icon: 'person_add',
-            trend: '-3.1%',
+            trend: stats?.stats?.recentUsers ? `+${stats.stats.recentUsers}` : '+3.1%',
+            iconColor: 'text-violet-600',
           },
           {
             label: 'Active Drivers',
-            value: stats?.activeDrivers || 0,
+            value: stats?.activeDrivers ?? 0,
             icon: 'airline_stops',
             trend: '+5.4%',
+            iconColor: 'text-orange-500',
           },
         ].map((stat, idx) => (
-          <div key={idx} className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">{stat.icon}</span>
-              </div>
-              <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+          <div key={idx} className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">{stat.label}</p>
+              {loading ? (
+                <div className="h-8 w-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse"></div>
+              ) : (
+                <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white">{stat.value}</h3>
+              )}
+              <span className={`inline-flex items-center gap-0.5 text-xs font-bold mt-2 ${
                 stat.trend.startsWith('-')
-                  ? 'text-red-500 bg-red-100 dark:bg-red-500/10'
-                  : 'text-emerald-500 bg-emerald-100 dark:bg-emerald-500/10'
+                  ? 'text-red-500'
+                  : 'text-emerald-500'
               }`}>
-                {stat.trend}
+                <span className="material-symbols-outlined text-sm">{stat.trend.startsWith('-') ? 'trending_down' : 'trending_up'}</span>
+                {stat.trend} <span className="text-slate-400 font-normal ml-1">vs last week</span>
               </span>
             </div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
-            <h3 className="text-2xl font-bold mt-1 text-slate-900 dark:text-white">{stat.value}</h3>
+            <div className={`w-11 h-11 bg-primary/10 rounded-lg flex items-center justify-center ${stat.iconColor} shrink-0`}>
+              <span className="material-symbols-outlined text-xl">{stat.icon}</span>
+            </div>
           </div>
         ))}
       </div>
