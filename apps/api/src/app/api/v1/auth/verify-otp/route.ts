@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     if (role === "DRIVER" || user.role === "DRIVER") {
       const driverProfile = await prisma.driverProfile.findUnique({
         where: { userId: user.id },
-        select: { verificationStatus: true, isVerified: true, isOnline: true, vehicleType: true },
+        select: { verificationStatus: true, isVerified: true, isOnline: true },
       });
       verificationStatus = driverProfile?.verificationStatus;
     }

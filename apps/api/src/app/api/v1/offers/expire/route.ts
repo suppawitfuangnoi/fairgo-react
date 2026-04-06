@@ -11,7 +11,9 @@ import { emitToUser } from "@/lib/socket";
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get("x-cron-secret");
-  if (secret !== process.env.CRON_SECRET && process.env.NODE_ENV === "production") {
+  const cronSecret = process.env.CRON_SECRET;
+  // Only enforce secret if CRON_SECRET env var is set
+  if (cronSecret && secret !== cronSecret) {
     return errorResponse("Unauthorized", 401);
   }
 
