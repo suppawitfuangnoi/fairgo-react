@@ -55,6 +55,8 @@ export default function SubmitOfferPage() {
   // Post-submission state
   const [submittedOfferId, setSubmittedOfferId] = useState<string | null>(null);
   const [waitingCountdown, setWaitingCountdown] = useState(90);
+  // Explicit offer status badge: PENDING → ACCEPTED | REJECTED | EXPIRED
+  const [offerStatus, setOfferStatus] = useState<'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'>('PENDING');
 
   // Counter-offer from customer
   const [customerCounter, setCustomerCounter] = useState<CounterOfferData | null>(null);
@@ -148,20 +150,23 @@ export default function SubmitOfferPage() {
       toast.info(`ผู้โดยสารต่อรอง: ฿${data.fareAmount} (รอบที่ ${data.roundNumber})`);
     };
 
-    const onOfferAccepted = (data: { offerId: string; tripId: string }) => {
+    const onOfferAccepted = (_data: { offerId: string; tripId: string }) => {
+      setOfferStatus('ACCEPTED');
       toast.success('ผู้โดยสารยอมรับข้อเสนอ!');
       navigate('/trip-active', { replace: true });
     };
 
     const onOfferRejected = (data: { offerId: string }) => {
+      setOfferStatus('REJECTED');
       toast.error('ผู้โดยสารปฏิเสธข้อเสนอ');
-      setTimeout(() => navigate('/home', { replace: true }), 1500);
+      setTimeout(() => navigate('/home', { replace: true }), 2000);
     };
 
     const onOfferExpired = (data: { offerId: string }) => {
       if (data.offerId === submittedOfferId || (customerCounter && data.offerId === customerCounter.offerId)) {
+        setOfferStatus('EXPIRED');
         toast.warning('ข้อเสนอหมดอายุ');
-        setTimeout(() => navigate('/home', { replace: true }), 1500);
+        // No auto-navigate — let driver choose to go back manually
       }
     };
 
@@ -183,18 +188,23 @@ export default function SubmitOfferPage() {
   // Waiting countdown after submission
   useEffect(() => {
     if (!submittedOfferId || customerCounter) return;
-    setWaitingCountdown(90);
+    // Don't reset if already restored with a specific remaining time
+    const restoredState = (location.state as { restored?: boolean; pendingOffer?: { expiresAt?: string } } | null);
+    if (!restoredState?.restored) setWaitingCountdown(90);
+
     countdownRef.current = setInterval(() => {
       setWaitingCountdown(prev => {
         if (prev <= 1) {
           clearInterval(countdownRef.current!);
+          // Offer timed out client-side — mark as expired
+          setOfferStatus(s => s === 'PENDING' ? 'EXPIRED' : s);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(countdownRef.current!);
-  }, [submittedOfferId, customerCounter]);
+  }, [submittedOfferId, customerCounter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Counter-offer expiry countdown
   useEffect(() => {
@@ -327,32 +337,72 @@ export default function SubmitOfferPage() {
         {!customerCounter ? (
           /* Waiting for customer response */
           <div className="w-full max-w-sm text-center">
+
+            {/* Status badge */}
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-5 ${
+              offerStatus === 'PENDING'  ? 'bg-primary/10 text-primary' :
+              offerStatus === 'ACCEPTED' ? 'bg-green-100 text-green-700' :
+              offerStatus === 'REJECTED' ? 'bg-red-100 text-red-700' :
+              'bg-gray-200 text-gray-500'
+            }`}>
+              <span className="material-icons-round text-sm">
+                {offerStatus === 'PENDING' ? 'schedule' :
+                 offerStatus === 'ACCEPTED' ? 'check_circle' :
+                 offerStatus === 'REJECTED' ? 'cancel' : 'timer_off'}
+              </span>
+              {offerStatus === 'PENDING'  ? 'PENDING' :
+               offerStatus === 'ACCEPTED' ? 'ACCEPTED' :
+               offerStatus === 'REJECTED' ? 'REJECTED' : 'EXPIRED'}
+            </div>
+
             <div className="relative w-28 h-28 mx-auto mb-6">
-              <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" style={{ animationDuration: '2s' }}></div>
+              {offerStatus === 'PENDING' && (
+                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" style={{ animationDuration: '2s' }}></div>
+              )}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center shadow-xl">
-                  <span className="material-icons-round text-white text-3xl">check</span>
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl ${
+                  offerStatus === 'PENDING'  ? 'bg-primary' :
+                  offerStatus === 'ACCEPTED' ? 'bg-green-500' :
+                  offerStatus === 'REJECTED' ? 'bg-red-400' :
+                  'bg-gray-400'
+                }`}>
+                  <span className="material-icons-round text-white text-3xl">
+                    {offerStatus === 'PENDING'  ? 'check' :
+                     offerStatus === 'ACCEPTED' ? 'check_circle' :
+                     offerStatus === 'REJECTED' ? 'cancel' : 'timer_off'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">ส่งข้อเสนอแล้ว!</h2>
-            <p className="text-slate-500 dark:text-slate-400 mb-2">รอผู้โดยสารตอบรับ...</p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+              {offerStatus === 'PENDING'  ? 'ส่งข้อเสนอแล้ว!' :
+               offerStatus === 'ACCEPTED' ? 'ยอมรับแล้ว!' :
+               offerStatus === 'REJECTED' ? 'ถูกปฏิเสธ' : 'ข้อเสนอหมดอายุ'}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 mb-2">
+              {offerStatus === 'PENDING'  ? 'รอผู้โดยสารตอบรับ...' :
+               offerStatus === 'ACCEPTED' ? 'กำลังนำทางไปยังการเดินทาง...' :
+               offerStatus === 'REJECTED' ? 'ผู้โดยสารปฏิเสธข้อเสนอของคุณ' :
+               'ผู้โดยสารไม่ตอบสนองในเวลาที่กำหนด'}
+            </p>
             <p className="text-4xl font-extrabold text-primary mb-6">฿{fareAmount}</p>
 
-            {/* Countdown */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 mb-6 shadow-sm border border-slate-100 dark:border-slate-700">
-              <div className="flex justify-between text-sm text-slate-500 mb-2">
-                <span>หมดอายุใน</span>
-                <span className={waitingCountdown <= 30 ? 'text-red-500 font-bold' : 'font-semibold'}>{waitingCountdown}s</span>
+            {/* Countdown — only shown while pending */}
+            {offerStatus === 'PENDING' && (
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 mb-6 shadow-sm border border-slate-100 dark:border-slate-700">
+                <div className="flex justify-between text-sm text-slate-500 mb-2">
+                  <span>หมดอายุใน</span>
+                  <span className={waitingCountdown <= 30 ? 'text-red-500 font-bold' : 'font-semibold'}>{waitingCountdown}s</span>
+                </div>
+                <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${waitingCountdown <= 30 ? 'bg-red-500' : 'bg-primary'}`}
+                    style={{ width: `${(waitingCountdown / 90) * 100}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-1000"
-                  style={{ width: `${(waitingCountdown / 90) * 100}%` }}
-                />
-              </div>
-            </div>
+            )}
 
             <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mb-6 text-left">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-1">จุดรับ</p>
@@ -363,9 +413,13 @@ export default function SubmitOfferPage() {
 
             <button
               onClick={() => navigate('/home', { replace: true })}
-              className="w-full py-3 rounded-xl border-2 border-slate-300 text-slate-600 dark:text-slate-400 font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className={`w-full py-3 rounded-xl font-semibold transition text-sm ${
+                offerStatus !== 'PENDING'
+                  ? 'bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary/90'
+                  : 'border-2 border-slate-300 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
             >
-              ยกเลิกและกลับ
+              {offerStatus === 'EXPIRED' || offerStatus === 'REJECTED' ? 'กลับหน้าหลัก' : 'ยกเลิกและกลับ'}
             </button>
           </div>
         ) : (
@@ -429,9 +483,16 @@ export default function SubmitOfferPage() {
                 {/* Action Buttons */}
                 {!showCounterInput ? (
                   <div className="space-y-3">
+                    {/* Expired overlay when counter has timed out */}
+                    {counterExpiry === 0 && customerCounter.expiresAt && (
+                      <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-3 flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm font-semibold mb-1">
+                        <span className="material-icons-round text-base">timer_off</span>
+                        ข้อเสนอต่อรองนี้หมดอายุแล้ว
+                      </div>
+                    )}
                     <button
                       onClick={handleAcceptCounter}
-                      disabled={counterLoading}
+                      disabled={counterLoading || counterExpiry === 0}
                       className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/30 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <span className="material-icons-round">check_circle</span>
@@ -441,7 +502,7 @@ export default function SubmitOfferPage() {
                     {customerCounter.roundNumber < MAX_ROUNDS && (
                       <button
                         onClick={() => { setShowCounterInput(true); setCounterAmount(String(fareAmount)); }}
-                        disabled={counterLoading}
+                        disabled={counterLoading || counterExpiry === 0}
                         className="w-full py-3.5 rounded-2xl border-2 border-amber-400 text-amber-600 font-bold hover:bg-amber-50 dark:hover:bg-amber-900/20 transition disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         <span className="material-icons-round text-sm">swap_horiz</span>
@@ -490,7 +551,7 @@ export default function SubmitOfferPage() {
                       </button>
                       <button
                         onClick={handleSubmitCounterCounter}
-                        disabled={counterLoading || !counterAmount}
+                        disabled={counterLoading || !counterAmount || counterExpiry === 0}
                         className="flex-[2] py-3 rounded-xl bg-amber-500 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {counterLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'ส่งราคา'}

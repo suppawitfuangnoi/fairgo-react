@@ -58,6 +58,9 @@ export default function MatchingPage() {
   const [counterMessage, setCounterMessage] = useState('');
   const [counterLoading, setCounterLoading] = useState(false);
 
+  // Per-offer action in progress (so one accept doesn't block all offers)
+  const [actionOfferId, setActionOfferId] = useState<string | null>(null);
+
   // Countdown for expiring offers
   const [offerCountdowns, setOfferCountdowns] = useState<Record<string, number>>({});
 
@@ -162,9 +165,10 @@ export default function MatchingPage() {
   }, []);
 
   // ── Countdown for expiring counter-offers ─────────────────────────────
+  // Also auto-removes offers from state 3 s after they reach 0
   useEffect(() => {
     countdownRef.current = setInterval(() => {
-      setOfferCountdowns(() => {
+      setOfferCountdowns((prev) => {
         const next: Record<string, number> = {};
         offers.forEach(o => {
           if (o.expiresAt) {
@@ -174,11 +178,18 @@ export default function MatchingPage() {
         });
         return next;
       });
+      // Auto-remove offers whose countdown hit 0 more than 3 s ago (client-side safety net)
+      setOffers(prev => prev.filter(o => {
+        if (!o.expiresAt) return true;
+        const msLeft = new Date(o.expiresAt).getTime() - Date.now();
+        return msLeft > -3000; // keep for 3 s after expiry so UI can show "Expired" badge
+      }));
     }, 1000);
     return () => clearInterval(countdownRef.current);
   }, [offers]);
 
   async function handleAcceptOffer(offerId: string) {
+    setActionOfferId(offerId);
     setLoading(true);
     try {
       await apiFetch(`/offers/${offerId}/respond`, {
@@ -189,10 +200,12 @@ export default function MatchingPage() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'ยืนยันไม่สำเร็จ');
       setLoading(false);
+      setActionOfferId(null);
     }
   }
 
   async function handleRejectOffer(offerId: string) {
+    setActionOfferId(offerId);
     try {
       await apiFetch(`/offers/${offerId}/respond`, {
         method: 'POST',
@@ -201,6 +214,7 @@ export default function MatchingPage() {
       setOffers(prev => prev.filter(o => o.id !== offerId));
       toast.info('ปฏิเสธข้อเสนอแล้ว');
     } catch { /* ignore */ }
+    finally { setActionOfferId(null); }
   }
 
   async function handleCounterSubmit() {
@@ -324,17 +338,33 @@ export default function MatchingPage() {
               offers.map((offer, idx) => {
                 const countdown = offerCountdowns[offer.id];
                 const hasCountdown = countdown !== undefined;
-                const isExpiringSoon = hasCountdown && countdown <= 30;
+                const isExpired = hasCountdown && countdown === 0;
+                const isExpiringSoon = hasCountdown && countdown > 0 && countdown <= 30;
+                const isThisActionLoading = actionOfferId === offer.id;
+                const isAnyActionLoading = loading;
+                // Disable all interactions if expired or any action in progress
+                const isDisabled = isExpired || isAnyActionLoading;
 
                 return (
                   <div
                     key={offer.id}
-                    className={`bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border relative overflow-hidden ${
+                    className={`bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border relative overflow-hidden transition-opacity ${
+                      isExpired ? 'opacity-60' :
                       offer.isBestMatch || idx === 0
                         ? 'border-primary/40 ring-2 ring-primary/20'
                         : 'border-gray-100 dark:border-gray-700'
-                    }`}
+                    } ${isExpired ? 'border-gray-300 dark:border-gray-600' : ''}`}
                   >
+                    {/* Expired overlay badge */}
+                    {isExpired && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100/70 dark:bg-gray-900/70 rounded-xl">
+                        <div className="bg-gray-700 text-white text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2">
+                          <span className="material-icons-round text-base">timer_off</span>
+                          ข้อเสนอหมดอายุแล้ว
+                        </div>
+                      </div>
+                    )}
+
                     {/* Round badge */}
                     {offer.roundNumber > 1 && (
                       <div className="absolute top-0 left-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-br-lg">
@@ -348,7 +378,7 @@ export default function MatchingPage() {
                     )}
 
                     {/* Countdown bar */}
-                    {hasCountdown && (
+                    {hasCountdown && !isExpired && (
                       <div className={`mb-3 flex items-center gap-2 text-xs font-semibold ${isExpiringSoon ? 'text-red-500' : 'text-amber-600'}`}>
                         <span className="material-icons-round text-sm">timer</span>
                         หมดอายุใน {countdown} วินาที
@@ -401,17 +431,20 @@ export default function MatchingPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleRejectOffer(offer.id)}
-                        disabled={loading}
+                        disabled={isDisabled}
                         className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50"
                       >
-                        ปฏิเสธ
+                        {isThisActionLoading && actionOfferId === offer.id ? (
+                          <span className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin inline-block" />
+                        ) : 'ปฏิเสธ'}
                       </button>
                       <button
                         onClick={() => {
+                          if (isExpired) return;
                           setCounterOffer({ offerId: offer.id, currentFare: offer.fare, round: offer.roundNumber });
                           setCounterAmount(String(userFare || offer.fare));
                         }}
-                        disabled={loading || offer.roundNumber >= 5}
+                        disabled={isDisabled || offer.roundNumber >= 5}
                         className="flex-1 py-3 rounded-xl border-2 border-amber-400 text-amber-600 font-bold text-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 transition disabled:opacity-30 flex items-center justify-center gap-1"
                       >
                         <span className="material-icons-round text-sm">swap_horiz</span>
@@ -419,10 +452,10 @@ export default function MatchingPage() {
                       </button>
                       <button
                         onClick={() => handleAcceptOffer(offer.id)}
-                        disabled={loading}
+                        disabled={isDisabled}
                         className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-1 shadow-lg shadow-primary/25"
                       >
-                        {loading ? (
+                        {isThisActionLoading ? (
                           <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         ) : 'ยอมรับ'}
                       </button>

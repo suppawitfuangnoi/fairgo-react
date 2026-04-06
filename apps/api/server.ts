@@ -102,6 +102,68 @@ async function main() {
   }, 60_000);
 
   // ──────────────────────────────────────────────
+  // Offer expiry sweep every 30 s
+  // Atomically expires PENDING offers past their expiresAt
+  // and notifies both parties in real time.
+  // ──────────────────────────────────────────────
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const expiredIds = await prisma.$queryRaw<{ id: string; rideRequestId: string; proposedBy: string }[]>`
+        UPDATE ride_offers
+        SET status = 'EXPIRED', "respondedAt" = ${now}
+        WHERE status = 'PENDING'
+          AND "expiresAt" IS NOT NULL
+          AND "expiresAt" < ${now}
+        RETURNING id, "rideRequestId", "proposedBy"
+      `;
+      if (expiredIds.length === 0) return;
+
+      const ids = expiredIds.map((r) => r.id);
+      console.log(`[Socket] Offer expiry sweep: expired ${ids.length} offers`);
+
+      // Load full offer data for notifications
+      const expiredOffers = await prisma.rideOffer.findMany({
+        where: { id: { in: ids } },
+        include: {
+          rideRequest: { include: { customerProfile: true } },
+          driverProfile: { include: { user: { select: { id: true } } } },
+        },
+      });
+
+      for (const offer of expiredOffers) {
+        const driverUserId = offer.driverProfile.user.id;
+        const customerUserId = offer.rideRequest.customerProfile.userId;
+        const payload = { offerId: offer.id, rideRequestId: offer.rideRequestId };
+        const driverSid = userSockets.get(driverUserId);
+        const customerSid = userSockets.get(customerUserId);
+        if (driverSid) io.to(`user:${driverUserId}`).emit("offer:expired", payload);
+        if (customerSid) io.to(`user:${customerUserId}`).emit("offer:expired", payload);
+      }
+
+      // Reset ride requests with no remaining PENDING offers back to PENDING
+      const affectedRideIds = [...new Set(expiredOffers.map((o) => o.rideRequestId))];
+      for (const rideId of affectedRideIds) {
+        const activePending = await prisma.rideOffer.count({
+          where: { rideRequestId: rideId, status: "PENDING" },
+        });
+        if (activePending === 0) {
+          await prisma.rideRequest.updateMany({
+            where: { id: rideId, status: { in: ["MATCHING", "NEGOTIATING"] } },
+            data: { status: "PENDING" },
+          });
+          const rideReq = expiredOffers.find((o) => o.rideRequestId === rideId)?.rideRequest;
+          if (rideReq) {
+            io.to(`user:${rideReq.customerProfile.userId}`).emit("ride:back_to_pending", { rideRequestId: rideId });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Socket] Offer expiry sweep error:", err);
+    }
+  }, 30_000);
+
+  // ──────────────────────────────────────────────
   // Authentication middleware
   // ──────────────────────────────────────────────
   io.use((socket: Socket, next) => {

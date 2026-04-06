@@ -32,6 +32,7 @@ export type NotificationType =
   | "TRIP_COMPLETED"
   | "TRIP_CANCELLED"
   | "DISPUTE_CREATED"
+  | "OFFER_EXPIRED"
   | "SYSTEM_ALERT"
   | "OTP_DEBUG_INFO"
   // Legacy
@@ -334,6 +335,17 @@ export const Notif = {
       relatedEntityType: "trip",
       relatedEntityId: tripId,
       payload: { tripId, cancelledBy, reason },
+    }),
+
+  offerExpired: (userId: string, offerId: string) =>
+    createAndEmitNotification({
+      userId,
+      type: "OFFER_EXPIRED",
+      title: "⏰ Offer Expired",
+      body: "A negotiation offer has expired with no response.",
+      relatedEntityType: "offer",
+      relatedEntityId: offerId,
+      payload: { offerId },
     }),
 
   systemAlert: (userId: string, title: string, message: string) =>
