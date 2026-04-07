@@ -348,6 +348,9 @@ export default function TripActivePage() {
         />
       </div>
 
+      {/* ── TOP STATUS BAR / SOS / BOTTOM SHEET / DISPUTE — hidden while chat is open ── */}
+      {!chatOpen && (<>
+
       {/* ── TOP STATUS BAR ── */}
       <div className="fixed top-0 left-0 w-full z-[9998] pt-12 px-5 flex justify-between items-start pointer-events-none">
         <div className="pointer-events-auto bg-white/95 backdrop-blur-md shadow-lg rounded-xl p-3 pr-5 flex items-center gap-3 max-w-[75%] border border-slate-100">
@@ -594,6 +597,8 @@ export default function TripActivePage() {
           </div>
         </div>
       )}
+
+      </>)} {/* end !chatOpen */}
 
       {/* ── CHAT PANEL (slides up) ── */}
       {chatOpen && (
