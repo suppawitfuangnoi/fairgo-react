@@ -65,15 +65,11 @@ export default function GoogleMap({
   // Initialize map — no mapId (requires a real Cloud Console ID; arbitrary strings cause silent failures)
   useEffect(() => {
     if (!ready || !mapRef.current) return;
-    const mapStyles = [
-      { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-      { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-    ];
     const map = new window.google.maps.Map(mapRef.current, {
       center,
       zoom,
+      mapId: 'a9d68526588d406f3c630bbb',
       disableDefaultUI: true,
-      styles: mapStyles,
       gestureHandling: 'cooperative',
     });
     if (showTraffic) {

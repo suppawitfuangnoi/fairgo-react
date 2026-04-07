@@ -121,19 +121,12 @@ export default function GoogleMap({
   useEffect(() => {
     if (!ready || !mapRef.current) return;
 
-    const mapStyles = [
-      { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-      { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-      { featureType: 'water', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-    ];
-
     const map = new window.google.maps.Map(mapRef.current, {
       center,
       zoom,
+      mapId: 'a9d68526588d406f39c9cc17',
       disableDefaultUI: true,
-      styles: mapStyles,
       gestureHandling,
-
     });
 
     if (showTraffic) {
