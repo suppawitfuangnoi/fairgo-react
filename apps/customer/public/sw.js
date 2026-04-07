@@ -1,5 +1,5 @@
 // FairGo Customer Service Worker
-const CACHE_NAME = 'fairgo-customer-v1';
+const CACHE_NAME = 'fairgo-customer-v3';
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -22,21 +22,34 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Network-first for API calls
-  if (url.pathname.startsWith('/api/') || url.hostname.includes('railway.app')) {
+  // Always network-first: API, sockets, external services, Google APIs
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.hostname.includes('railway.app') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('gstatic.com') ||
+    url.hostname.includes('google.com') ||
+    url.hostname.includes('maps.google') ||
+    request.mode === 'navigate'
+  ) {
     event.respondWith(
-      fetch(request).catch(() => new Response(JSON.stringify({ error: 'offline' }), {
-        headers: { 'Content-Type': 'application/json' },
-        status: 503,
-      }))
+      fetch(request).catch(() => {
+        // For navigation requests, fall back to cached index.html (offline SPA support)
+        if (request.mode === 'navigate') {
+          return caches.match('/index.html') || new Response('Offline', { status: 503 });
+        }
+        return new Response(JSON.stringify({ error: 'offline' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 503,
+        });
+      })
     );
     return;
   }
 
-  // Cache-first for static assets
+  // Cache-first for hashed static assets (JS/CSS bundles with content hash in filename)
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      // Cache successful GET requests for static assets
       if (request.method === 'GET' && response.status === 200) {
         const clone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
