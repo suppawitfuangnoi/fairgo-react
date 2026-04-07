@@ -133,7 +133,7 @@ export default function GoogleMap({
       disableDefaultUI: true,
       styles: mapStyles,
       gestureHandling,
-      mapId: 'fairgo-customer',
+
     });
 
     if (showTraffic) {
@@ -206,22 +206,43 @@ export default function GoogleMap({
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    markersRef.current.forEach((m) => { m.map = null; });
+    markersRef.current.forEach((m) => {
+      if (m.setMap) m.setMap(null);
+      else m.map = null;
+    });
     markersRef.current = [];
 
     const AdvancedMarkerElement = window.google?.maps?.marker?.AdvancedMarkerElement;
-    if (!AdvancedMarkerElement) return;
 
     markers.forEach((marker) => {
       const color = COLOR_HEX[marker.color || 'blue'];
-      const el = makeMarkerElement(color, !!marker.pulse);
-      const m = new AdvancedMarkerElement({
-        position: { lat: marker.lat, lng: marker.lng },
-        map: mapInstanceRef.current,
-        title: marker.label,
-        content: el,
-      });
-      markersRef.current.push(m);
+      if (AdvancedMarkerElement) {
+        const el = makeMarkerElement(color, !!marker.pulse);
+        const m = new AdvancedMarkerElement({
+          position: { lat: marker.lat, lng: marker.lng },
+          map: mapInstanceRef.current,
+          title: marker.label,
+          content: el,
+        });
+        markersRef.current.push(m);
+      } else {
+        // Legacy fallback
+        const m = new window.google.maps.Marker({
+          position: { lat: marker.lat, lng: marker.lng },
+          map: mapInstanceRef.current,
+          title: marker.label,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 3,
+            scale: marker.pulse ? 10 : 8,
+          },
+          zIndex: 10,
+        });
+        markersRef.current.push(m);
+      }
     });
   }, [markers]);
 
