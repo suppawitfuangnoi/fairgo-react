@@ -41,9 +41,16 @@ const TERMINAL_STATUSES = new Set([
 ]);
 
 export function useActiveSession() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const checked   = useRef(false);
+  const navigate     = useNavigate();
+  const location     = useLocation();
+  const checked      = useRef(false);
+  // Keep a ref so the socket reconnect handler always sees the latest pathname
+  // without needing it in the dependency array (avoids re-registering on every navigate)
+  const pathnameRef  = useRef(location.pathname);
+
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   useEffect(() => {
     // Only check once per mount to avoid redirect loops
@@ -59,7 +66,8 @@ export function useActiveSession() {
     void restoreSession(navigate);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-check on socket reconnect so missed status updates are recovered
+  // Re-check on socket reconnect so missed status updates are recovered.
+  // Only registered once — pathnameRef avoids stale-closure without re-running the effect.
   useEffect(() => {
     const socket = socketClient.connect();
 
@@ -67,7 +75,7 @@ export function useActiveSession() {
       // Fetch notifications to catch any missed events
       apiFetch('/notifications?page=1&limit=20').catch(() => {});
 
-      const currentPath = location.pathname;
+      const currentPath = pathnameRef.current;
       if (ACTIVE_TRIP_PAGES.some((p) => currentPath.startsWith(p))) return;
       if (ACTIVE_RIDE_PAGES.some((p) => currentPath.startsWith(p))) return;
 
@@ -78,7 +86,7 @@ export function useActiveSession() {
     return () => {
       socket.off('connect', onReconnect);
     };
-  }, [navigate, location.pathname]);
+  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 async function restoreSession(navigate: ReturnType<typeof useNavigate>) {
@@ -97,9 +105,11 @@ async function restoreSession(navigate: ReturnType<typeof useNavigate>) {
         console.log('[useActiveSession] Restoring terminal trip (summary):', tripRes.id, tripRes.status);
         navigate(`/trip-summary/${tripRes.id}`, { replace: true });
       } else {
-        // Trip is ongoing — restore active trip UI
+        // Trip is ongoing — restore active trip UI.
+        // NOTE: navigate to /trip-active (no ID) — TripActivePage fetches active trip itself.
+        // /trip-active/:id has no matching route in App.tsx and would cause a redirect loop.
         console.log('[useActiveSession] Restoring active trip:', tripRes.id, tripRes.status);
-        navigate(`/trip-active/${tripRes.id}`, { replace: true });
+        navigate('/trip-active', { replace: true });
       }
       return;
     }
