@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     if (!("userId" in authResult)) return authResult as unknown as Response;
     const user = authResult as JwtPayload;
 
-    const activeStatuses = ["DRIVER_ASSIGNED", "DRIVER_EN_ROUTE", "DRIVER_ARRIVED", "PICKUP_CONFIRMED", "IN_PROGRESS"];
+    const activeStatuses = ["DRIVER_ASSIGNED", "DRIVER_EN_ROUTE", "DRIVER_ARRIVED", "PICKUP_CONFIRMED", "IN_PROGRESS", "ARRIVED_DESTINATION", "AWAITING_CASH_CONFIRMATION"];
 
     let where: Record<string, unknown> = { status: { in: activeStatuses } };
 

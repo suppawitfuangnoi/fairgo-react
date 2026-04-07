@@ -59,9 +59,16 @@ export const driverPersistence = {
 };
 
 export function useActiveSession() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const checked  = useRef(false);
+  const navigate     = useNavigate();
+  const location     = useLocation();
+  const checked      = useRef(false);
+  // Ref keeps the latest pathname accessible in the socket handler
+  // without re-registering the listener on every navigation
+  const pathnameRef  = useRef(location.pathname);
+
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
 
   // ── Run once on mount ───────────────────────────────────────────────
   useEffect(() => {
@@ -77,6 +84,7 @@ export function useActiveSession() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Re-check on every socket reconnect ─────────────────────────────
+  // Registered once — pathnameRef avoids stale closure without causing re-runs
   useEffect(() => {
     const socket = socketClient.connect();
 
@@ -84,7 +92,7 @@ export function useActiveSession() {
       // Fetch notifications to catch any missed events
       apiFetch('/notifications?page=1&limit=20').catch(() => {});
 
-      const path = location.pathname;
+      const path = pathnameRef.current;
       if (ACTIVE_TRIP_PAGES.some(p => path.startsWith(p))) return;
       if (ACTIVE_NEGOTIATION_PAGES.some(p => path.startsWith(p))) return;
 
@@ -93,7 +101,7 @@ export function useActiveSession() {
 
     socket.on('connect', onConnect);
     return () => { socket.off('connect', onConnect); };
-  }, [navigate, location.pathname]);
+  }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,7 +121,9 @@ async function restoreSession(navigate: ReturnType<typeof useNavigate>) {
       } else {
         socketClient.setOnline(); // must be online if in active trip
         console.log('[Driver useActiveSession] Restoring active trip:', trip.id, trip.status);
-        navigate(`/trip-active/${trip.id}`, { replace: true });
+        // Navigate to /trip-active (no ID) — TripActivePage fetches the active trip itself.
+        // /trip-active/:id has no matching route in App.tsx and would cause a redirect loop.
+        navigate('/trip-active', { replace: true });
       }
       return;
     }
