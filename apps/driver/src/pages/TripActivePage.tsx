@@ -402,7 +402,7 @@ export default function TripActivePage() {
   return (
     <>
       <style>{styles}</style>
-    <div className="min-h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden">
+    <div className="h-screen bg-background-light dark:bg-background-dark font-display relative overflow-hidden">
       {/* Interactive Map Layer (Background) */}
       {!chatOpen && (
         <div className="absolute inset-0 z-0 w-full h-full">
