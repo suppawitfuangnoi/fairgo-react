@@ -30,6 +30,57 @@ interface GoogleMapProps {
   route?: RouteConfig;
 }
 
+const COLOR_HEX: Record<string, string> = {
+  blue: '#13c8ec',
+  red: '#ef4444',
+  green: '#22c55e',
+  orange: '#f97316',
+};
+
+function makeMarkerElement(color: string, pulse: boolean): HTMLElement {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative;display:flex;align-items:center;justify-content:center;';
+
+  const dot = document.createElement('div');
+  dot.style.cssText = `
+    width:${pulse ? 20 : 16}px;
+    height:${pulse ? 20 : 16}px;
+    background:${color};
+    border-radius:50%;
+    border:3px solid #fff;
+    box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    position:relative;
+    z-index:1;
+  `;
+  wrapper.appendChild(dot);
+
+  if (pulse) {
+    const ring = document.createElement('div');
+    ring.style.cssText = `
+      position:absolute;
+      width:32px;height:32px;
+      border-radius:50%;
+      border:2px solid ${color};
+      opacity:0.5;
+      animation:pulse-ring 1.5s ease-out infinite;
+    `;
+    wrapper.appendChild(ring);
+
+    if (!document.getElementById('adv-marker-style')) {
+      const style = document.createElement('style');
+      style.id = 'adv-marker-style';
+      style.textContent = `
+        @keyframes pulse-ring {
+          0%   { transform:scale(0.8); opacity:0.6; }
+          100% { transform:scale(1.8); opacity:0; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+  return wrapper;
+}
+
 export default function GoogleMap({
   center = { lat: 13.7563, lng: 100.5018 },
   zoom = 15,
@@ -49,8 +100,7 @@ export default function GoogleMap({
     let attempts = 0;
     const tryInit = () => {
       if (window.google?.maps) { setReady(true); return; }
-      attempts++;
-      if (attempts < 50) setTimeout(tryInit, 200);
+      if (++attempts < 50) setTimeout(tryInit, 200);
     };
     tryInit();
   }, []);
@@ -67,6 +117,7 @@ export default function GoogleMap({
       disableDefaultUI: true,
       styles: mapStyles,
       gestureHandling: 'cooperative',
+      mapId: 'fairgo-driver',
     });
     if (showTraffic) {
       const trafficLayer = new window.google.maps.TrafficLayer();
@@ -83,37 +134,27 @@ export default function GoogleMap({
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current.forEach((m) => { m.map = null; });
     markersRef.current = [];
-    const colorMap: Record<string, string> = {
-      blue: '#13c8ec',
-      red: '#ef4444',
-      green: '#22c55e',
-      orange: '#f97316',
-    };
+
+    const AdvancedMarkerElement = window.google?.maps?.marker?.AdvancedMarkerElement;
+    if (!AdvancedMarkerElement) return;
+
     markers.forEach((marker) => {
-      const color = colorMap[marker.color || 'blue'];
-      const m = new window.google.maps.Marker({
+      const color = COLOR_HEX[marker.color || 'blue'];
+      const el = makeMarkerElement(color, !!marker.pulse);
+      const m = new AdvancedMarkerElement({
         position: { lat: marker.lat, lng: marker.lng },
         map: mapInstanceRef.current,
         title: marker.label,
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          fillColor: color,
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
-          scale: marker.pulse ? 10 : 8,
-        },
+        content: el,
       });
       markersRef.current.push(m);
     });
   }, [markers]);
 
-  // Draw route using Directions API when route prop is provided
   useEffect(() => {
     if (!mapInstanceRef.current || !ready) return;
-    // Clear any existing route
     if (directionsRendererRef.current) {
       directionsRendererRef.current.setMap(null);
       directionsRendererRef.current = null;
