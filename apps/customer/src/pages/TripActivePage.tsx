@@ -630,7 +630,7 @@ export default function TripActivePage() {
 
       {/* ── CHAT PANEL (slides up) ── */}
       {chatOpen && (
-        <div className="absolute inset-0 z-50 flex flex-col bg-white">
+        <div className="fixed inset-0 z-[10000] flex flex-col bg-white max-w-md mx-auto">
           {/* Chat Header */}
           <div className="flex items-center gap-3 px-4 pt-14 pb-4 border-b border-slate-100 bg-white shadow-sm">
             <button onClick={() => setChatOpen(false)} className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center active:scale-95">
