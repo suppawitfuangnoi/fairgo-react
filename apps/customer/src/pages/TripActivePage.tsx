@@ -336,7 +336,7 @@ export default function TripActivePage() {
           zoom={14}
           markers={[
             { lat: position.lat, lng: position.lng, color: 'blue', label: 'ตำแหน่งของฉัน' },
-            ...(driverLocation ? [{ lat: driverLocation.lat, lng: driverLocation.lng, color: 'red', label: 'คนขับ' }] : []),
+            ...(driverLocation ? [{ lat: driverLocation.lat, lng: driverLocation.lng, color: 'red' as const, label: 'คนขับ' }] : []),
           ]}
           route={
             driverLocation && trip && PRE_PICKUP_STATUSES.has(trip.status)
