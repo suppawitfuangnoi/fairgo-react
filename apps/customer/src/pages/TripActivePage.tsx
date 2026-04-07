@@ -96,14 +96,9 @@ function mapTrip(o: any): ActiveTrip {
   };
 }
 
-// Bangkok bounding box for SVG mapping (rough)
-const BBOX = { latMin: 13.60, latMax: 13.90, lngMin: 100.35, lngMax: 100.70 };
-
-function latLngToSvgPercent(lat: number, lng: number) {
-  const x = ((lng - BBOX.lngMin) / (BBOX.lngMax - BBOX.lngMin)) * 100;
-  const y = (1 - (lat - BBOX.latMin) / (BBOX.latMax - BBOX.latMin)) * 100;
-  return { x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(85, y)) };
-}
+const PRE_PICKUP_STATUSES = new Set<TripStatus>([
+  'DRIVER_ASSIGNED', 'DRIVER_EN_ROUTE', 'DRIVER_ARRIVED',
+]);
 
 export default function TripActivePage() {
   const navigate = useNavigate();
@@ -118,6 +113,9 @@ export default function TripActivePage() {
   const pollIntervalRef = useRef<ReturnType<typeof setTimeout>>();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const tripIdRef = useRef<string | null>(null);
+
+  // ── ETA from Directions API ──────────────────────────────────────────────
+  const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
 
   // ── Payment confirmation state ───────────────────────────────────────────
   const [paymentConfirmed, setPaymentConfirmed]   = useState(false);
@@ -328,13 +326,6 @@ export default function TripActivePage() {
     );
   }
 
-  // Map SVG positions
-  const carPos = driverLocation
-    ? latLngToSvgPercent(driverLocation.lat, driverLocation.lng)
-    : { x: 45, y: 55 }; // Default mock position
-
-  const destPos = { x: 78, y: 75 };
-
   return (
     <div className="w-full max-w-md mx-auto h-screen bg-slate-100 overflow-hidden relative flex flex-col font-display shadow-2xl">
 
@@ -345,47 +336,16 @@ export default function TripActivePage() {
           zoom={14}
           markers={[
             { lat: position.lat, lng: position.lng, color: 'blue', label: 'ตำแหน่งของฉัน' },
-            { lat: driverLocation?.lat || position.lat, lng: driverLocation?.lng || position.lng, color: 'red', label: 'คนขับ' },
+            ...(driverLocation ? [{ lat: driverLocation.lat, lng: driverLocation.lng, color: 'red', label: 'คนขับ' }] : []),
           ]}
+          route={
+            driverLocation && trip && PRE_PICKUP_STATUSES.has(trip.status)
+              ? { origin: driverLocation, destination: position }
+              : undefined
+          }
+          onDurationChange={setEtaMinutes}
           className="absolute inset-0 w-full h-full"
         />
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {/* Route path */}
-          <path
-            d={`M ${carPos.x} ${carPos.y} Q 60 60 ${destPos.x} ${destPos.y}`}
-            fill="none"
-            stroke="#13c8ec"
-            strokeWidth="1.5"
-            strokeDasharray="3 2"
-            opacity="0.8"
-          />
-        </svg>
-
-        {/* Driver Car — animates smoothly as location updates */}
-        <div
-          className="absolute z-10 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-[1200ms] ease-in-out"
-          style={{ left: `${carPos.x}%`, top: `${carPos.y}%` }}
-        >
-          <div
-            className="bg-white p-2 rounded-full shadow-lg border-2 border-primary"
-            style={{ transform: driverLocation?.heading ? `rotate(${driverLocation.heading}deg)` : undefined }}
-          >
-            <span className="material-icons-round text-primary text-xl block">directions_car</span>
-          </div>
-          {/* Pulse ring */}
-          <div className="absolute inset-0 rounded-full border-2 border-primary/40 animate-ping pointer-events-none scale-150"></div>
-        </div>
-
-        {/* Destination Pin */}
-        <div
-          className="absolute z-10 transform -translate-x-1/2 -translate-y-full"
-          style={{ left: `${destPos.x}%`, top: `${destPos.y}%` }}
-        >
-          <div className="bg-slate-900 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-md mb-1 whitespace-nowrap text-center">
-            ปลายทาง
-          </div>
-          <span className="material-icons-round text-slate-900 text-3xl block text-center drop-shadow-md">location_on</span>
-        </div>
       </div>
 
       {/* ── TOP STATUS BAR ── */}
@@ -396,24 +356,31 @@ export default function TripActivePage() {
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">สถานะ</p>
-            <p className="text-sm font-bold leading-tight">
-              {getStatusText(trip.status)}{' '}
-              {trip.estimatedArrival > 0 && (
-                <span className="text-primary">{trip.estimatedArrival} นาที</span>
-              )}
-            </p>
+            <p className="text-sm font-bold leading-tight">{getStatusText(trip.status)}</p>
           </div>
         </div>
 
-        {/* Location indicator — shows real-time dot */}
-        <div className="pointer-events-auto bg-white/95 shadow-lg rounded-full w-12 h-12 flex items-center justify-center border border-slate-100">
-          <div className="relative">
-            <span className="material-icons-round text-slate-400 text-xl">my_location</span>
-            {driverLocation && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white animate-pulse"></span>
-            )}
+        {/* ETA badge — shown when driver is en route */}
+        {(etaMinutes !== null || trip.estimatedArrival > 0) && PRE_PICKUP_STATUSES.has(trip.status) && (
+          <div className="pointer-events-auto bg-primary text-white shadow-lg rounded-xl px-4 py-3 flex flex-col items-center min-w-[72px] border border-primary/20">
+            <span className="text-2xl font-extrabold leading-none">
+              {etaMinutes ?? trip.estimatedArrival}
+            </span>
+            <span className="text-[10px] font-semibold opacity-90 mt-0.5">นาที</span>
           </div>
-        </div>
+        )}
+
+        {/* Location dot — shown when no ETA */}
+        {!(PRE_PICKUP_STATUSES.has(trip.status) && (etaMinutes !== null || trip.estimatedArrival > 0)) && (
+          <div className="pointer-events-auto bg-white/95 shadow-lg rounded-full w-12 h-12 flex items-center justify-center border border-slate-100">
+            <div className="relative">
+              <span className="material-icons-round text-slate-400 text-xl">my_location</span>
+              {driverLocation && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── SOS BUTTON ── */}

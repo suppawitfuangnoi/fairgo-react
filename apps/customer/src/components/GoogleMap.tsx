@@ -24,6 +24,8 @@ interface GoogleMapProps {
   showTraffic?: boolean;
   /** When set, draws a Directions route between origin and destination */
   route?: { origin: { lat: number; lng: number }; destination: { lat: number; lng: number } };
+  /** Called with drive duration in minutes when a route is successfully fetched */
+  onDurationChange?: (minutes: number) => void;
   /** Called when user clicks on the map (not on a marker) */
   onMapClick?: (coords: { lat: number; lng: number }) => void;
   /** Called continuously as the map center changes (for map-picker mode) */
@@ -40,6 +42,7 @@ export default function GoogleMap({
   onMapReady,
   showTraffic = false,
   route,
+  onDurationChange,
   onMapClick,
   onCenterChange,
   gestureHandling = 'cooperative',
@@ -149,6 +152,11 @@ export default function GoogleMap({
           directionsRendererRef.current.setDirections(result);
           // Auto-fit bounds to the route
           mapInstanceRef.current.fitBounds(result.routes[0].bounds, 60);
+          // Report drive duration to parent
+          const leg = result.routes[0]?.legs?.[0];
+          if (leg?.duration?.value && onDurationChange) {
+            onDurationChange(Math.ceil(leg.duration.value / 60));
+          }
         }
       }
     );
