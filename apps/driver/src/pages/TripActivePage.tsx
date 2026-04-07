@@ -270,7 +270,7 @@ export default function TripActivePage() {
       if (tripRef.current?.id && pos) {
         try {
           await apiFetch(`/trips/${tripRef.current.id}/location`, {
-            method: 'PATCH',
+            method: 'POST',
             body: { lat: pos.lat, lng: pos.lng, heading: 0 },
           });
         } catch { /* ignore */ }
