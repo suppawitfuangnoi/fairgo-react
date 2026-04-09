@@ -442,7 +442,7 @@ export default function PromosPage() {
               )}
 
               {/* Code (create only) */}
-              {modalMode === 'create' && field('Code', (
+              {modalMode === 'create' && field('Code',
                 <input
                   type="text"
                   value={formData.code}
@@ -451,22 +451,24 @@ export default function PromosPage() {
                   maxLength={20}
                   className={`${inputCls} font-mono tracking-widest`}
                 />,
-              ), true, 'ตัวอักษรพิมพ์ใหญ่ ไม่มีช่องว่าง 3-20 ตัวอักษร')}
+                true,
+                'ตัวอักษรพิมพ์ใหญ่ ไม่มีช่องว่าง 3-20 ตัวอักษร',
+              )}
 
               {/* Description */}
-              {field('Description', (
+              {field('Description',
                 <input
                   type="text"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="เช่น ส่วนลด 30% สำหรับการเดินทางแรก"
                   className={inputCls}
-                />
-              ))}
+                />,
+              )}
 
               {/* Discount Type + Value */}
               <div className="grid grid-cols-2 gap-3">
-                {field('ประเภทส่วนลด', (
+                {field('ประเภทส่วนลด',
                   <select
                     value={formData.discountType}
                     onChange={(e) => setFormData({ ...formData, discountType: e.target.value as 'PERCENTAGE' | 'FIXED' })}
@@ -474,9 +476,10 @@ export default function PromosPage() {
                   >
                     <option value="PERCENTAGE">เปอร์เซ็นต์ (%)</option>
                     <option value="FIXED">จำนวนเงิน (฿)</option>
-                  </select>
-                ), true)}
-                {field(`มูลค่าส่วนลด ${formData.discountType === 'PERCENTAGE' ? '(%)' : '(฿)'}`, (
+                  </select>,
+                  true,
+                )}
+                {field(`มูลค่าส่วนลด ${formData.discountType === 'PERCENTAGE' ? '(%)' : '(฿)'}`,
                   <input
                     type="number"
                     value={formData.discountValue}
@@ -486,13 +489,14 @@ export default function PromosPage() {
                     max={formData.discountType === 'PERCENTAGE' ? '100' : undefined}
                     step="0.01"
                     className={inputCls}
-                  />
-                ), true)}
+                  />,
+                  true,
+                )}
               </div>
 
               {/* Max Discount + Min Fare */}
               <div className="grid grid-cols-2 gap-3">
-                {field('ส่วนลดสูงสุด (฿)', (
+                {field('ส่วนลดสูงสุด (฿)',
                   <input
                     type="number"
                     value={formData.maxDiscount}
@@ -501,9 +505,11 @@ export default function PromosPage() {
                     min="0"
                     step="0.01"
                     className={inputCls}
-                  />
-                ), false, 'สำหรับ % เพื่อกำหนดเพดานส่วนลด')}
-                {field('ราคาขั้นต่ำ (฿)', (
+                  />,
+                  false,
+                  'สำหรับ % เพื่อกำหนดเพดานส่วนลด',
+                )}
+                {field('ราคาขั้นต่ำ (฿)',
                   <input
                     type="number"
                     value={formData.minFare}
@@ -512,12 +518,12 @@ export default function PromosPage() {
                     min="0"
                     step="0.01"
                     className={inputCls}
-                  />
-                ))}
+                  />,
+                )}
               </div>
 
               {/* Max Redemptions */}
-              {field('จำนวนใช้งานสูงสุด', (
+              {field('จำนวนใช้งานสูงสุด',
                 <input
                   type="number"
                   value={formData.maxRedemptions}
@@ -526,28 +532,30 @@ export default function PromosPage() {
                   min="1"
                   step="1"
                   className={inputCls}
-                />
-              ))}
+                />,
+              )}
 
               {/* Valid From / Until — type="date" to avoid timezone offset bug */}
               <div className="grid grid-cols-2 gap-3">
-                {field('วันเริ่มต้น', (
+                {field('วันเริ่มต้น',
                   <input
                     type="date"
                     value={formData.validFrom}
                     onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
                     className={inputCls}
-                  />
-                ), true)}
-                {field('วันหมดอายุ', (
+                  />,
+                  true,
+                )}
+                {field('วันหมดอายุ',
                   <input
                     type="date"
                     value={formData.validUntil}
                     onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
                     min={formData.validFrom || undefined}
                     className={inputCls}
-                  />
-                ), true)}
+                  />,
+                  true,
+                )}
               </div>
             </div>
 
