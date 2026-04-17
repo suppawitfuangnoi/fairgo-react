@@ -23,11 +23,19 @@ export async function POST(request: NextRequest) {
     const ipAddress = getClientIp(request);
     const userAgent = request.headers.get("user-agent") || undefined;
 
+    // Test-bypass: shared-secret header to skip IP rate limit (E2E only).
+    const bypassHeader = request.headers.get("x-test-bypass");
+    const bypassSecret = process.env.TEST_BYPASS_SECRET;
+    const isTestBypass =
+      !!bypassSecret && !!bypassHeader && bypassHeader === bypassSecret;
+
     // ── IP-level rate limit: 20 verify attempts per 10 min per IP ────────
     // The per-phone brute-force lock (5 attempts → 15 min) is the primary
     // guard; this IP limit stops IP-rotation attacks across multiple phones.
     const ipKey = `ip:${ipAddress ?? "unknown"}:otp-verify`;
-    const ipLimit = checkRateLimit(ipKey, 10 * 60_000, 20);
+    const ipLimit = isTestBypass
+      ? { allowed: true, remaining: 99, retryAfterMs: 0 }
+      : checkRateLimit(ipKey, 10 * 60_000, 20);
     if (!ipLimit.allowed) {
       writeAuditLog({
         action: "OTP_VERIFY_IP_RATE_LIMIT_EXCEEDED",

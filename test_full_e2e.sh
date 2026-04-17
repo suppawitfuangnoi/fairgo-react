@@ -5,6 +5,7 @@
 set +e  # Don't exit on errors - tests should continue even if individual checks fail
 
 BASE_URL="${BASE_URL:-https://fairgo-react-production.up.railway.app}"
+TEST_BYPASS_SECRET="${TEST_BYPASS_SECRET:-fairgo-e2e-bypass-2026}"
 PASS=0
 FAIL=0
 SKIP=0
@@ -48,8 +49,30 @@ info() {
 }
 
 api() {
-  # Helper: make API call and return response
-  curl -s "$@" 2>/dev/null
+  # Helper: make API call with test-bypass header injected
+  curl -s -H "x-test-bypass: $TEST_BYPASS_SECRET" "$@" 2>/dev/null
+}
+
+# otp_login <phone> <role> <name>
+# Performs two-step OTP flow: request-otp (captures otpRef + debugCode),
+# then verify-otp. Outputs JSON response from verify-otp on stdout.
+otp_login() {
+  local phone="$1"
+  local role="${2:-CUSTOMER}"
+  local name="${3:-}"
+  local req_r
+  req_r=$(api -X POST "$BASE_URL/api/v1/auth/request-otp" \
+    -H "Content-Type: application/json" \
+    -d "{\"phone\":\"$phone\",\"role\":\"$role\"}")
+  local ref code
+  ref=$(echo "$req_r" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('otpRef',''))" 2>/dev/null)
+  code=$(echo "$req_r" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('debugCode','123456'))" 2>/dev/null)
+  [ -z "$code" ] || [ "$code" = "None" ] && code="123456"
+  local name_part=""
+  [ -n "$name" ] && name_part=",\"name\":\"$name\""
+  api -X POST "$BASE_URL/api/v1/auth/verify-otp" \
+    -H "Content-Type: application/json" \
+    -d "{\"phone\":\"$phone\",\"otpRef\":\"$ref\",\"code\":\"$code\",\"role\":\"$role\"$name_part}"
 }
 
 echo ""
@@ -77,19 +100,22 @@ section "T02 - Auth: OTP Request & Verify (Customer)"
 TS=$(date +%s)
 CUST_PHONE="+6681${TS: -7}"
 
-R=$(api -X POST "$BASE_URL/api/v1/auth/request-otp" \
+REQ_R=$(api -X POST "$BASE_URL/api/v1/auth/request-otp" \
   -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$CUST_PHONE\"}")
-MSG=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('message',''))" 2>/dev/null)
+  -d "{\"phone\":\"$CUST_PHONE\",\"role\":\"CUSTOMER\"}")
+MSG=$(echo "$REQ_R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('message',''))" 2>/dev/null)
+CUST_OTP_REF=$(echo "$REQ_R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('otpRef',''))" 2>/dev/null)
+CUST_OTP_CODE=$(echo "$REQ_R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('debugCode','123456'))" 2>/dev/null)
+[ -z "$CUST_OTP_CODE" ] || [ "$CUST_OTP_CODE" = "None" ] && CUST_OTP_CODE="123456"
 if echo "$MSG" | grep -qi "otp\|sent"; then
   pass "Customer OTP request success"
 else
-  fail "Customer OTP request" "$R"
+  fail "Customer OTP request" "$REQ_R"
 fi
 
 R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" \
   -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$CUST_PHONE\",\"code\":\"123456\",\"role\":\"CUSTOMER\",\"name\":\"Test Customer $TS\"}")
+  -d "{\"phone\":\"$CUST_PHONE\",\"otpRef\":\"$CUST_OTP_REF\",\"code\":\"$CUST_OTP_CODE\",\"role\":\"CUSTOMER\",\"name\":\"Test Customer $TS\"}")
 CUST_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 CUST_ID=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('user',{}).get('id',''))" 2>/dev/null)
 if [ -n "$CUST_TOKEN" ] && [ "$CUST_TOKEN" != "None" ]; then
@@ -103,13 +129,7 @@ fi
 section "T03 - Auth: OTP Request & Verify (Driver)"
 # ============================================================
 DRIV_PHONE="+6682${TS: -7}"
-api -X POST "$BASE_URL/api/v1/auth/request-otp" \
-  -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$DRIV_PHONE\"}" > /dev/null
-
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" \
-  -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$DRIV_PHONE\",\"code\":\"123456\",\"role\":\"DRIVER\",\"name\":\"Test Driver $TS\"}")
+R=$(otp_login "$DRIV_PHONE" "DRIVER" "Test Driver $TS")
 DRIV_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 DRIV_ID=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('user',{}).get('id',''))" 2>/dev/null)
 if [ -n "$DRIV_TOKEN" ] && [ "$DRIV_TOKEN" != "None" ]; then
@@ -748,15 +768,11 @@ section "T33 - Cancellation: NO_SHOW_PASSENGER"
 # ============================================================
 TS2=$(date +%s)
 CUST2_PHONE="+6683${TS2: -7}"
-api -X POST "$BASE_URL/api/v1/auth/request-otp" -H "Content-Type: application/json" -d "{\"phone\":\"$CUST2_PHONE\"}" > /dev/null
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$CUST2_PHONE\",\"code\":\"123456\",\"role\":\"CUSTOMER\",\"name\":\"Cancel Test Customer\"}")
+R=$(otp_login "$CUST2_PHONE" "CUSTOMER" "Cancel Test Customer")
 CUST2_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 
 DRIV2_PHONE="+6684${TS2: -7}"
-api -X POST "$BASE_URL/api/v1/auth/request-otp" -H "Content-Type: application/json" -d "{\"phone\":\"$DRIV2_PHONE\"}" > /dev/null
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$DRIV2_PHONE\",\"code\":\"123456\",\"role\":\"DRIVER\",\"name\":\"Cancel Test Driver\"}")
+R=$(otp_login "$DRIV2_PHONE" "DRIVER" "Cancel Test Driver")
 DRIV2_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 DRIV2_ID=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('user',{}).get('id',''))" 2>/dev/null)
 
@@ -833,14 +849,10 @@ section "T34 - Cancellation: CANCELLED_BY_DRIVER"
 TS3=$(date +%s)
 CUST3_PHONE="+6685${TS3: -7}"
 DRIV3_PHONE="+6686${TS3: -7}"
-api -X POST "$BASE_URL/api/v1/auth/request-otp" -H "Content-Type: application/json" -d "{\"phone\":\"$CUST3_PHONE\"}" > /dev/null
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$CUST3_PHONE\",\"code\":\"123456\",\"role\":\"CUSTOMER\",\"name\":\"Cancel Test C3\"}")
+R=$(otp_login "$CUST3_PHONE" "CUSTOMER" "Cancel Test C3")
 CUST3_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 
-api -X POST "$BASE_URL/api/v1/auth/request-otp" -H "Content-Type: application/json" -d "{\"phone\":\"$DRIV3_PHONE\"}" > /dev/null
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$DRIV3_PHONE\",\"code\":\"123456\",\"role\":\"DRIVER\",\"name\":\"Cancel Test D3\"}")
+R=$(otp_login "$DRIV3_PHONE" "DRIVER" "Cancel Test D3")
 DRIV3_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 DRIV3_ID=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('user',{}).get('id',''))" 2>/dev/null)
 
@@ -920,14 +932,10 @@ section "T36 - Role-Based Transition Enforcement"
 TS4=$(date +%s)
 CUST4_PHONE="+6687${TS4: -7}"
 DRIV4_PHONE="+6688${TS4: -7}"
-api -X POST "$BASE_URL/api/v1/auth/request-otp" -H "Content-Type: application/json" -d "{\"phone\":\"$CUST4_PHONE\"}" > /dev/null
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$CUST4_PHONE\",\"code\":\"123456\",\"role\":\"CUSTOMER\",\"name\":\"Role Test C4\"}")
+R=$(otp_login "$CUST4_PHONE" "CUSTOMER" "Role Test C4")
 CUST4_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 
-api -X POST "$BASE_URL/api/v1/auth/request-otp" -H "Content-Type: application/json" -d "{\"phone\":\"$DRIV4_PHONE\"}" > /dev/null
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$DRIV4_PHONE\",\"code\":\"123456\",\"role\":\"DRIVER\",\"name\":\"Role Test D4\"}")
+R=$(otp_login "$DRIV4_PHONE" "DRIVER" "Role Test D4")
 DRIV4_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('accessToken',''))" 2>/dev/null)
 DRIV4_ID=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('user',{}).get('id',''))" 2>/dev/null)
 
@@ -999,9 +1007,7 @@ section "T37 - Refresh Token"
 # Refresh token requires the refreshToken in request body
 TS_R=$(date +%s)
 PHONE_R="+6699${TS_R: -7}"
-api -X POST "$BASE_URL/api/v1/auth/request-otp" -H "Content-Type: application/json" -d "{\"phone\":\"$PHONE_R\"}" > /dev/null
-R=$(api -X POST "$BASE_URL/api/v1/auth/verify-otp" -H "Content-Type: application/json" \
-  -d "{\"phone\":\"$PHONE_R\",\"code\":\"123456\",\"role\":\"CUSTOMER\",\"name\":\"Refresh Test\"}")
+R=$(otp_login "$PHONE_R" "CUSTOMER" "Refresh Test")
 REFRESH_TOKEN=$(echo "$R" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('refreshToken',''))" 2>/dev/null)
 
 if [ -n "$REFRESH_TOKEN" ] && [ "$REFRESH_TOKEN" != "None" ] && [ "$REFRESH_TOKEN" != "" ]; then

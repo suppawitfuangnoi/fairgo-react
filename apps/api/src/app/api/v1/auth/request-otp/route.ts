@@ -24,10 +24,20 @@ export async function POST(request: NextRequest) {
     const ipAddress = getClientIp(request);
     const userAgent = request.headers.get("user-agent") || undefined;
 
+    // Test-bypass: if request carries a valid shared secret header AND the
+    // server has TEST_BYPASS_SECRET configured, skip all rate limits.
+    // Used by E2E suite to avoid hitting per-IP caps during automated runs.
+    const bypassHeader = request.headers.get("x-test-bypass");
+    const bypassSecret = process.env.TEST_BYPASS_SECRET;
+    const isTestBypass =
+      !!bypassSecret && !!bypassHeader && bypassHeader === bypassSecret;
+
     // ── IP-level rate limit: 10 OTP requests per 10 min per IP ───────────
     // This prevents phone-number enumeration and SMS bombing from a single IP.
     const ipKey = `ip:${ipAddress ?? "unknown"}:otp-request`;
-    const ipLimit = checkRateLimit(ipKey, 10 * 60_000, 10);
+    const ipLimit = isTestBypass
+      ? { allowed: true, remaining: 99, retryAfterMs: 0 }
+      : checkRateLimit(ipKey, 10 * 60_000, 10);
     if (!ipLimit.allowed) {
       writeAuditLog({
         action: "OTP_IP_RATE_LIMIT_EXCEEDED",
@@ -44,7 +54,9 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Per-phone rate limit (includes cooldown + 10-min window) ─────────
-    const rateCheck = await checkOtpRateLimit(phone, purpose);
+    const rateCheck = isTestBypass
+      ? { allowed: true as const }
+      : await checkOtpRateLimit(phone, purpose);
     if (!rateCheck.allowed) {
       writeAuditLog({
         action: "OTP_PHONE_RATE_LIMIT_EXCEEDED",
